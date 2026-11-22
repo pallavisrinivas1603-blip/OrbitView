@@ -1,10 +1,11 @@
 
-from flask import Flask, render_template, jsonify
+from flask import Flask, render_template, jsonify, request
 import os
 import requests
 import traceback
 import time
 import math
+import sqlite3
 
 from datetime import datetime, timezone, timedelta
 from skyfield.api import EarthSatellite, load, wgs84
@@ -16,8 +17,10 @@ from space_alerts import check_space_proximity, send_telegram_alert
 # FLASK CONFIGURATION
 # ==================================================
 
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+
 frontend_path = os.path.abspath(
-    os.path.join(os.path.dirname(__file__), "../frontend")
+    os.path.join(BASE_DIR, "../frontend")
 )
 
 app = Flask(
@@ -26,6 +29,95 @@ app = Flask(
     static_folder=frontend_path,
     static_url_path="/static"
 )
+
+
+# ==================================================
+# BUG & ERROR CENTER DATABASE
+# ==================================================
+
+DATABASE_PATH = os.path.join(
+    BASE_DIR,
+    "bug_error_center.db"
+)
+
+
+def get_db_connection():
+    connection = sqlite3.connect(DATABASE_PATH)
+    connection.row_factory = sqlite3.Row
+    return connection
+
+
+def current_timestamp():
+    return datetime.now(timezone.utc).isoformat()
+
+
+def initialize_database():
+    connection = get_db_connection()
+    cursor = connection.cursor()
+
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS error_logs (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            error_type TEXT NOT NULL,
+            message TEXT NOT NULL,
+            source TEXT,
+            endpoint TEXT,
+            created_at TEXT NOT NULL
+        )
+    """)
+
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS bug_reports (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            title TEXT NOT NULL,
+            description TEXT NOT NULL,
+            feature TEXT NOT NULL,
+            status TEXT NOT NULL DEFAULT 'Open',
+            created_at TEXT NOT NULL
+        )
+    """)
+
+    connection.commit()
+    connection.close()
+
+
+def save_error_log(
+    error_type,
+    message,
+    source="Backend",
+    endpoint=None
+):
+    try:
+        connection = get_db_connection()
+
+        connection.execute(
+            """
+            INSERT INTO error_logs (
+                error_type,
+                message,
+                source,
+                endpoint,
+                created_at
+            )
+            VALUES (?, ?, ?, ?, ?)
+            """,
+            (
+                str(error_type)[:100],
+                str(message)[:2000],
+                str(source)[:100],
+                str(endpoint or "")[:300],
+                current_timestamp()
+            )
+        )
+
+        connection.commit()
+        connection.close()
+
+    except Exception:
+        app.logger.exception("Unable to save error log.")
+
+
+initialize_database()
 
 
 # ==================================================
@@ -94,7 +186,6 @@ def get_satellite_records():
         TLE_CACHE["records"] is not None
         and current_time - TLE_CACHE["fetched_at"] < CACHE_DURATION
     ):
-
         return TLE_CACHE["records"]
 
     records = {}
@@ -102,53 +193,35 @@ def get_satellite_records():
     for satellite_id, satellite_name in SATELLITES.items():
 
         response = requests.get(
-
             CELESTRAK_URL,
-
             params={
-
                 "CATNR": satellite_id,
-
                 "FORMAT": "TLE"
-
             },
-
             timeout=20
-
         )
 
         response.raise_for_status()
 
         lines = [
-
             line.strip()
-
             for line in response.text.splitlines()
-
             if line.strip()
-
         ]
 
         if len(lines) < 3:
-
             continue
 
         records[satellite_id] = {
-
             "name": satellite_name,
-
             "line1": lines[1],
-
             "line2": lines[2]
-
         }
 
     if not records:
-
         raise Exception("No satellite orbital data received.")
 
     TLE_CACHE["records"] = records
-
     TLE_CACHE["fetched_at"] = current_time
 
     return records
@@ -167,15 +240,10 @@ def create_satellites():
     for satellite_id, record in records.items():
 
         satellite_objects[satellite_id] = EarthSatellite(
-
             record["line1"],
-
             record["line2"],
-
             record["name"],
-
             ts
-
         )
 
     return satellite_objects
@@ -198,8 +266,361 @@ def to_ist(skyfield_time):
 
 @app.route("/")
 def home():
-
     return render_template("index.html")
+
+
+# ==================================================
+# BUG & ERROR CENTER - SYSTEM HEALTH
+# ==================================================
+
+@app.route("/api/system-health")
+def system_health():
+
+    database_status = "Healthy"
+
+    try:
+        connection = get_db_connection()
+        connection.execute("SELECT 1")
+        connection.close()
+
+    except Exception:
+        database_status = "Error"
+
+    return jsonify({
+
+        "application": "OrbitView",
+
+        "status": (
+            "Healthy"
+            if database_status == "Healthy"
+            else "Degraded"
+        ),
+
+        "database": database_status,
+
+        "timestamp": current_timestamp(),
+
+        "features": {
+            "satellite_tracking": "Available",
+            "orbit_visualization": "Available",
+            "pass_prediction": "Available",
+            "communication_analysis": "Available",
+            "space_alerts": "Available",
+            "bug_reporting": "Available",
+            "error_logging": "Available"
+        }
+
+    })
+
+
+# ==================================================
+# BUG & ERROR CENTER - FRONTEND ERROR REPORTING
+# ==================================================
+
+@app.route("/api/errors", methods=["POST"])
+def receive_frontend_error():
+
+    data = request.get_json(silent=True) or {}
+
+    error_type = str(
+        data.get("error_type", "JavaScript Error")
+    ).strip()
+
+    message = str(
+        data.get("message", "Unknown frontend error")
+    ).strip()
+
+    source = str(
+        data.get("source", "Frontend")
+    ).strip()
+
+    endpoint = str(
+        data.get("endpoint", "")
+    ).strip()
+
+    if not message:
+        return jsonify({
+            "success": False,
+            "message": "Error message is required."
+        }), 400
+
+    save_error_log(
+        error_type=error_type,
+        message=message,
+        source=source,
+        endpoint=endpoint
+    )
+
+    return jsonify({
+        "success": True,
+        "message": "Frontend error recorded."
+    }), 201
+
+
+# ==================================================
+# BUG & ERROR CENTER - ERROR LOGS
+# ==================================================
+
+@app.route("/api/error-logs")
+def get_error_logs():
+
+    try:
+        connection = get_db_connection()
+
+        rows = connection.execute(
+            """
+            SELECT *
+            FROM error_logs
+            ORDER BY id DESC
+            LIMIT 200
+            """
+        ).fetchall()
+
+        connection.close()
+
+        logs = [dict(row) for row in rows]
+
+        return jsonify({
+            "success": True,
+            "count": len(logs),
+            "logs": logs
+        })
+
+    except Exception:
+
+        app.logger.exception("Unable to retrieve error logs.")
+
+        return jsonify({
+            "success": False,
+            "error": "Unable to retrieve error logs."
+        }), 500
+
+
+# ==================================================
+# BUG & ERROR CENTER - SUBMIT BUG REPORT
+# ==================================================
+
+@app.route("/api/bug-reports", methods=["POST"])
+def submit_bug_report():
+
+    data = request.get_json(silent=True) or {}
+
+    title = str(data.get("title", "")).strip()
+    description = str(data.get("description", "")).strip()
+    feature = str(data.get("feature", "")).strip()
+
+    if not title or not description or not feature:
+        return jsonify({
+            "success": False,
+            "message": "Title, description and feature are required."
+        }), 400
+
+    if len(title) > 150:
+        return jsonify({
+            "success": False,
+            "message": "Title must be 150 characters or fewer."
+        }), 400
+
+    if len(description) > 3000:
+        return jsonify({
+            "success": False,
+            "message": "Description must be 3000 characters or fewer."
+        }), 400
+
+    if len(feature) > 100:
+        return jsonify({
+            "success": False,
+            "message": "Feature name is too long."
+        }), 400
+
+    try:
+
+        connection = get_db_connection()
+
+        cursor = connection.execute(
+            """
+            INSERT INTO bug_reports (
+                title,
+                description,
+                feature,
+                status,
+                created_at
+            )
+            VALUES (?, ?, ?, ?, ?)
+            """,
+            (
+                title,
+                description,
+                feature,
+                "Open",
+                current_timestamp()
+            )
+        )
+
+        report_id = cursor.lastrowid
+
+        connection.commit()
+        connection.close()
+
+        return jsonify({
+            "success": True,
+            "message": "Bug report submitted successfully.",
+            "report_id": report_id
+        }), 201
+
+    except Exception:
+
+        app.logger.exception("Unable to save bug report.")
+
+        return jsonify({
+            "success": False,
+            "message": "Unable to submit bug report."
+        }), 500
+
+
+# ==================================================
+# BUG & ERROR CENTER - VIEW BUG REPORTS
+# ==================================================
+
+@app.route("/api/bug-reports")
+def get_bug_reports():
+
+    try:
+
+        connection = get_db_connection()
+
+        rows = connection.execute(
+            """
+            SELECT *
+            FROM bug_reports
+            ORDER BY id DESC
+            LIMIT 200
+            """
+        ).fetchall()
+
+        connection.close()
+
+        reports = [dict(row) for row in rows]
+
+        return jsonify({
+            "success": True,
+            "count": len(reports),
+            "reports": reports
+        })
+
+    except Exception:
+
+        app.logger.exception("Unable to retrieve bug reports.")
+
+        return jsonify({
+            "success": False,
+            "message": "Unable to retrieve bug reports."
+        }), 500
+
+
+# ==================================================
+# BUG & ERROR CENTER - UPDATE REPORT STATUS
+# ==================================================
+
+@app.route(
+    "/api/bug-reports/<int:report_id>/status",
+    methods=["PATCH"]
+)
+def update_bug_report_status(report_id):
+
+    data = request.get_json(silent=True) or {}
+
+    new_status = str(data.get("status", "")).strip()
+
+    allowed_statuses = [
+        "Open",
+        "In Progress",
+        "Resolved"
+    ]
+
+    if new_status not in allowed_statuses:
+        return jsonify({
+            "success": False,
+            "message": "Invalid report status."
+        }), 400
+
+    try:
+
+        connection = get_db_connection()
+
+        cursor = connection.execute(
+            """
+            UPDATE bug_reports
+            SET status = ?
+            WHERE id = ?
+            """,
+            (new_status, report_id)
+        )
+
+        connection.commit()
+
+        updated = cursor.rowcount > 0
+
+        connection.close()
+
+        if not updated:
+            return jsonify({
+                "success": False,
+                "message": "Bug report not found."
+            }), 404
+
+        return jsonify({
+            "success": True,
+            "message": "Bug report status updated.",
+            "report_id": report_id,
+            "status": new_status
+        })
+
+    except Exception:
+
+        app.logger.exception("Unable to update bug report.")
+
+        return jsonify({
+            "success": False,
+            "message": "Unable to update bug report status."
+        }), 500
+
+
+# ==================================================
+# AUTOMATIC SERVER ERROR LOGGING
+# ==================================================
+
+@app.after_request
+def log_server_errors(response):
+
+    if response.status_code >= 500:
+
+        try:
+
+            response_data = response.get_json(silent=True) or {}
+
+            message = (
+                response_data.get("error")
+                or response_data.get("message")
+                or f"HTTP {response.status_code} server error"
+            )
+
+            details = response_data.get("details")
+
+            if details:
+                message = f"{message}: {str(details)[:1500]}"
+
+            save_error_log(
+                error_type=f"HTTP {response.status_code}",
+                message=message,
+                source="Backend",
+                endpoint=request.path
+            )
+
+        except Exception:
+            app.logger.exception("Automatic error logging failed.")
+
+    return response
 
 
 # ==================================================
@@ -318,19 +739,15 @@ def get_satellite_orbits():
             )
 
             if mean_motion <= 0:
-
                 continue
 
             period_minutes = 1440 / mean_motion
-
             period_seconds = period_minutes * 60
 
             sample_times = [
 
                 current_datetime + timedelta(
-
                     seconds=period_seconds * index / (SAMPLE_COUNT - 1)
-
                 )
 
                 for index in range(SAMPLE_COUNT)
@@ -344,17 +761,13 @@ def get_satellite_orbits():
             subpoints = wgs84.subpoint(geocentric)
 
             latitudes = subpoints.latitude.degrees
-
             longitudes = subpoints.longitude.degrees
 
             coordinates = [
 
                 [
-
                     round(float(latitude), 4),
-
                     round(float(longitude), 4)
-
                 ]
 
                 for latitude, longitude in zip(
@@ -442,15 +855,10 @@ def get_satellite_passes():
         for satellite_id, satellite in satellite_objects.items():
 
             events, event_codes = satellite.find_events(
-
                 GROUND_STATION,
-
                 start_time,
-
                 end_time,
-
                 altitude_degrees=MINIMUM_ELEVATION
-
             )
 
             current_pass = {}
@@ -518,7 +926,6 @@ def get_satellite_passes():
                     )
 
                     if "maximum_elevation" in current_pass:
-
                         passes.append(current_pass)
 
                     current_pass = {}
@@ -542,13 +949,9 @@ def get_satellite_passes():
             "passes": passes,
 
             "message": (
-
                 "Satellite pass prediction completed."
-
                 if passes
-
                 else "No qualifying satellite passes found."
-
             )
 
         })
@@ -592,9 +995,7 @@ def communication_analysis(satellite_id):
         if satellite_id not in satellite_objects:
 
             return jsonify({
-
                 "error": "Satellite not found."
-
             }), 404
 
         satellite = satellite_objects[satellite_id]
@@ -612,57 +1013,38 @@ def communication_analysis(satellite_id):
         distance_km = float(distance.km)
 
         one_way_delay_ms = (
-
             distance_km / SPEED_OF_LIGHT_KM_S
-
         ) * 1000
 
         round_trip_delay_ms = one_way_delay_ms * 2
 
         frequency_ghz = COMMUNICATION_FREQUENCY_GHZ
-
         frequency_mhz = frequency_ghz * 1000
 
         if distance_km <= 0:
-
             raise ValueError("Invalid satellite distance.")
 
         fspl_db = (
-
             32.44
-
             + 20 * math.log10(frequency_mhz)
-
             + 20 * math.log10(distance_km)
-
         )
 
         transmit_power_dbm = 30
-
         transmit_antenna_gain_dbi = 10
-
         receive_antenna_gain_dbi = 10
-
         other_losses_db = 2
 
         received_power_dbm = (
-
             transmit_power_dbm
-
             + transmit_antenna_gain_dbi
-
             + receive_antenna_gain_dbi
-
             - fspl_db
-
             - other_losses_db
-
         )
 
         is_visible = bool(
-
             altitude.degrees >= MINIMUM_ELEVATION
-
         )
 
         return jsonify({
@@ -677,9 +1059,7 @@ def communication_analysis(satellite_id):
                 current_time
             ).isoformat(),
 
-            "distance_km": round(
-                distance_km, 2
-            ),
+            "distance_km": round(distance_km, 2),
 
             "elevation_degrees": round(
                 float(altitude.degrees), 2
@@ -786,11 +1166,9 @@ def get_space_alerts():
                 telegram_sent = send_telegram_alert(alert)
 
                 if telegram_sent:
-
                     LAST_SPACE_ALERT[satellite_name] = current_time
 
             else:
-
                 telegram_sent = False
 
             alert["telegram_sent"] = telegram_sent
@@ -812,13 +1190,9 @@ def get_space_alerts():
             "alert_count": len(results),
 
             "message": (
-
                 "Simulated proximity alerts generated."
-
                 if results
-
                 else "No simulated proximity alerts at this time."
-
             )
 
         })
@@ -841,5 +1215,4 @@ def get_space_alerts():
 # ==================================================
 
 if __name__ == "__main__":
-
     app.run(debug=True)

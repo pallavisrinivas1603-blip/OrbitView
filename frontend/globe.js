@@ -21,130 +21,145 @@ const ANIMATION_DURATION = 30000;
 
 const globeElement = document.getElementById("globeViz");
 
+if (!globeElement) {
+    console.error("Globe element #globeViz was not found.");
+}
+
 // --------------------------------
 // CREATE GLOBE + INFO LAYOUT
 // --------------------------------
 
-const globeLayout = document.createElement("div");
+let globeLayout = null;
+let infoPanel = null;
+let world = null;
 
-globeLayout.id = "orbitGlobeLayout";
+if (globeElement) {
 
-globeLayout.style.cssText = `
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) 290px;
-    gap: 20px;
-    align-items: start;
-    width: 100%;
-`;
+    globeLayout = document.createElement("div");
 
-globeElement.parentNode.insertBefore(globeLayout, globeElement);
-globeLayout.appendChild(globeElement);
+    globeLayout.id = "orbitGlobeLayout";
 
-// --------------------------------
-// RESPONSIVE STYLES
-// --------------------------------
-
-const responsiveStyle = document.createElement("style");
-
-responsiveStyle.textContent = `
-    #orbitGlobeLayout {
+    globeLayout.style.cssText = `
         display: grid;
         grid-template-columns: minmax(0, 1fr) 290px;
         gap: 20px;
         align-items: start;
         width: 100%;
-    }
+    `;
 
-    #satelliteInfoPanel {
-        background: #ffffff;
-        color: #313851;
-        border: 1px solid #dce1e8;
-        border-radius: 16px;
-        padding: 22px;
-        box-shadow: 0 8px 25px rgba(30, 40, 60, 0.08);
-        font-family: Arial, sans-serif;
-        line-height: 1.7;
-        min-width: 0;
-        display: none;
-        overflow-wrap: anywhere;
-    }
+    globeElement.parentNode.insertBefore(globeLayout, globeElement);
+    globeLayout.appendChild(globeElement);
 
-    #satelliteInfoPanel h3 {
-        font-size: 20px;
-        margin: 0 0 15px;
-        color: #313851;
-    }
+    // --------------------------------
+    // RESPONSIVE STYLES
+    // --------------------------------
 
-    #satelliteInfoPanel p {
-        margin: 10px 0;
-        font-size: 13px;
-        color: #4b5568;
-    }
+    const responsiveStyle = document.createElement("style");
 
-    #satelliteInfoPanel strong {
-        color: #222a40;
-    }
-
-    @media (max-width: 850px) {
+    responsiveStyle.textContent = `
         #orbitGlobeLayout {
-            grid-template-columns: 1fr;
+            display: grid;
+            grid-template-columns: minmax(0, 1fr) 290px;
+            gap: 20px;
+            align-items: start;
+            width: 100%;
         }
-    }
-`;
 
-document.head.appendChild(responsiveStyle);
-
-// --------------------------------
-// SATELLITE INFO PANEL
-// --------------------------------
-
-const infoPanel = document.createElement("div");
-
-infoPanel.id = "satelliteInfoPanel";
-
-globeLayout.appendChild(infoPanel);
-
-// --------------------------------
-// GLOBE CONFIGURATION
-// --------------------------------
-
-const world = Globe()(globeElement)
-    .globeImageUrl(
-        "https://unpkg.com/three-globe/example/img/earth-blue-marble.jpg"
-    )
-    .backgroundImageUrl(
-        "https://unpkg.com/three-globe/example/img/night-sky.png"
-    )
-    .showAtmosphere(true)
-    .atmosphereColor("#8bb8ff")
-    .atmosphereAltitude(0.18)
-    .pointAltitude(0.025)
-    .pointRadius(0.65)
-    .pointColor("color")
-    .labelText("name")
-    .labelSize(1.5)
-    .labelDotRadius(0.3)
-    .labelColor(() => "#ffffff")
-    .labelResolution(2)
-    .onPointClick(point => {
-
-        const satellite = satelliteData.find(
-            item => item.norad_id === point.norad_id
-        );
-
-        if (satellite) {
-            showSatelliteDetails(satellite);
+        #satelliteInfoPanel {
+            background: #ffffff;
+            color: #313851;
+            border: 1px solid #dce1e8;
+            border-radius: 16px;
+            padding: 22px;
+            box-shadow: 0 8px 25px rgba(30, 40, 60, 0.08);
+            font-family: Arial, sans-serif;
+            line-height: 1.7;
+            min-width: 0;
+            display: none;
+            overflow-wrap: anywhere;
         }
-    });
 
-world.controls().autoRotate = true;
-world.controls().autoRotateSpeed = 0.35;
+        #satelliteInfoPanel h3 {
+            font-size: 20px;
+            margin: 0 0 15px;
+            color: #313851;
+        }
+
+        #satelliteInfoPanel p {
+            margin: 10px 0;
+            font-size: 13px;
+            color: #4b5568;
+        }
+
+        #satelliteInfoPanel strong {
+            color: #222a40;
+        }
+
+        @media (max-width: 850px) {
+            #orbitGlobeLayout {
+                grid-template-columns: 1fr;
+            }
+        }
+    `;
+
+    document.head.appendChild(responsiveStyle);
+
+    // --------------------------------
+    // SATELLITE INFO PANEL
+    // --------------------------------
+
+    infoPanel = document.createElement("div");
+
+    infoPanel.id = "satelliteInfoPanel";
+
+    globeLayout.appendChild(infoPanel);
+
+    // --------------------------------
+    // GLOBE CONFIGURATION
+    // --------------------------------
+
+    world = Globe()(globeElement)
+        .globeImageUrl(
+            "https://unpkg.com/three-globe/example/img/earth-blue-marble.jpg"
+        )
+        .backgroundImageUrl(
+            "https://unpkg.com/three-globe/example/img/night-sky.png"
+        )
+        .showAtmosphere(true)
+        .atmosphereColor("#8bb8ff")
+        .atmosphereAltitude(0.18)
+        .pointAltitude(0.025)
+        .pointRadius(0.65)
+        .pointColor("color")
+        .labelText("name")
+        .labelSize(1.5)
+        .labelDotRadius(0.3)
+        .labelColor(() => "#ffffff")
+        .labelResolution(2)
+        .onPointClick(point => {
+
+            const satellite = satelliteData.find(
+                item => item.norad_id === point.norad_id
+            );
+
+            if (satellite) {
+                showSatelliteDetails(satellite);
+            }
+
+        });
+
+    world.controls().autoRotate = true;
+    world.controls().autoRotateSpeed = 0.35;
+
+}
 
 // --------------------------------
 // RESPONSIVE GLOBE
 // --------------------------------
 
 function resizeGlobe() {
+
+    if (!globeElement || !world) return;
 
     const width = globeElement.clientWidth;
     const height = globeElement.clientHeight;
@@ -153,6 +168,7 @@ function resizeGlobe() {
         world.width(width);
         world.height(height);
     }
+
 }
 
 window.addEventListener("resize", resizeGlobe);
@@ -172,6 +188,7 @@ function getSatelliteColor(name) {
     };
 
     return colors[name] || "#ffffff";
+
 }
 
 // --------------------------------
@@ -179,6 +196,8 @@ function getSatelliteColor(name) {
 // --------------------------------
 
 function showSatelliteDetails(satellite) {
+
+    if (!infoPanel) return;
 
     infoPanel.style.display = "block";
 
@@ -220,6 +239,7 @@ function showSatelliteDetails(satellite) {
             ORBITAL DATA
         </p>
     `;
+
 }
 
 // --------------------------------
@@ -240,24 +260,55 @@ function updateSatelliteCards(satellites) {
 
         if (!prefix) return;
 
-        document.getElementById(`${prefix}-status`).textContent =
-            "TRACKING";
+        const statusElement =
+            document.getElementById(`${prefix}-status`);
 
-        document.getElementById(`${prefix}-altitude`).textContent =
-            `${satellite.altitude_km} km`;
+        const altitudeElement =
+            document.getElementById(`${prefix}-altitude`);
 
-        document.getElementById(`${prefix}-latitude`).textContent =
-            `${satellite.latitude}°`;
+        const latitudeElement =
+            document.getElementById(`${prefix}-latitude`);
 
-        document.getElementById(`${prefix}-longitude`).textContent =
-            `${satellite.longitude}°`;
+        const longitudeElement =
+            document.getElementById(`${prefix}-longitude`);
 
-        document.getElementById(`${prefix}-velocity`).textContent =
-            `${satellite.velocity_km_s} km/s`;
+        const velocityElement =
+            document.getElementById(`${prefix}-velocity`);
 
-        document.getElementById(`${prefix}-tracking`).textContent =
-            `Source: ${satellite.data_source}`;
+        const trackingElement =
+            document.getElementById(`${prefix}-tracking`);
+
+        if (statusElement) {
+            statusElement.textContent = "TRACKING";
+        }
+
+        if (altitudeElement) {
+            altitudeElement.textContent =
+                `${satellite.altitude_km} km`;
+        }
+
+        if (latitudeElement) {
+            latitudeElement.textContent =
+                `${satellite.latitude}°`;
+        }
+
+        if (longitudeElement) {
+            longitudeElement.textContent =
+                `${satellite.longitude}°`;
+        }
+
+        if (velocityElement) {
+            velocityElement.textContent =
+                `${satellite.velocity_km_s} km/s`;
+        }
+
+        if (trackingElement) {
+            trackingElement.textContent =
+                `Source: ${satellite.data_source}`;
+        }
+
     });
+
 }
 
 // --------------------------------
@@ -276,26 +327,45 @@ async function loadSatellites() {
 
         const data = await response.json();
 
+        if (!Array.isArray(data.satellites)) {
+            throw new Error(
+                "Satellite API did not return a valid satellites list."
+            );
+        }
+
         satelliteData = data.satellites;
 
         updateSatelliteCards(satelliteData);
 
-        const markers = satelliteData.map(satellite => ({
-            lat: satellite.latitude,
-            lng: satellite.longitude,
-            name: satellite.name,
-            norad_id: satellite.norad_id,
-            color: getSatelliteColor(satellite.name)
-        }));
+        if (world) {
 
-        world.pointsData(markers);
+            const markers = satelliteData.map(satellite => ({
+                lat: satellite.latitude,
+                lng: satellite.longitude,
+                name: satellite.name,
+                norad_id: satellite.norad_id,
+                color: getSatelliteColor(satellite.name)
+            }));
+
+            world.pointsData(markers);
+
+        }
 
         console.log("Satellite data loaded:", satelliteData);
 
     } catch (error) {
 
         console.error("Satellite loading error:", error);
+
+        const message = document.getElementById("searchMessage");
+
+        if (message) {
+            message.textContent =
+                "Unable to load satellite data. Check the backend.";
+        }
+
     }
+
 }
 
 // --------------------------------
@@ -303,6 +373,8 @@ async function loadSatellites() {
 // --------------------------------
 
 async function loadSatelliteOrbits() {
+
+    if (!world) return;
 
     try {
 
@@ -343,7 +415,9 @@ async function loadSatelliteOrbits() {
     } catch (error) {
 
         console.error("Orbital path loading error:", error);
+
     }
+
 }
 
 // --------------------------------
@@ -390,6 +464,7 @@ function getInterpolatedPosition(coordinates, progress) {
         lat: latitude,
         lng: longitude
     };
+
 }
 
 // --------------------------------
@@ -398,7 +473,7 @@ function getInterpolatedPosition(coordinates, progress) {
 
 function animateSatellites(timestamp) {
 
-    if (!orbitData.length) return;
+    if (!orbitData.length || !world) return;
 
     if (animationStartTime === null) {
         animationStartTime = timestamp;
@@ -433,6 +508,7 @@ function animateSatellites(timestamp) {
     animationFrameId = requestAnimationFrame(
         animateSatellites
     );
+
 }
 
 // --------------------------------
@@ -440,6 +516,8 @@ function animateSatellites(timestamp) {
 // --------------------------------
 
 function startSatelliteAnimation() {
+
+    if (!world) return;
 
     if (animationFrameId !== null) {
         cancelAnimationFrame(animationFrameId);
@@ -452,6 +530,7 @@ function startSatelliteAnimation() {
     );
 
     console.log("Satellite animation started!");
+
 }
 
 // --------------------------------
@@ -473,64 +552,186 @@ function openSatelliteViewer(satellite) {
             "3D satellite viewer is not ready. Check satellite3d.js."
         );
 
-        document.getElementById("searchMessage").textContent =
-            "Satellite found, but 3D viewer is not ready. Check the browser console.";
+        const message =
+            document.getElementById("searchMessage");
+
+        if (message) {
+            message.textContent =
+                "Satellite found, but 3D viewer is not ready. Check the browser console.";
+        }
+
     }
+
 }
 
 // --------------------------------
 // SATELLITE SEARCH
+// CHANDRAYAAN-3 + INSAT-3D
 // --------------------------------
 
 function searchSatellite() {
 
-    const searchInput = document.getElementById("satelliteSearch");
-    const message = document.getElementById("searchMessage");
+    const searchInput =
+        document.getElementById("satelliteSearch");
+
+    const message =
+        document.getElementById("searchMessage");
+
+    const chandrayaanResult =
+        document.getElementById("chandrayaanSearchResult");
+
+    const insatResult =
+        document.getElementById("insatSearchResult");
+
+    if (!searchInput || !message) return;
 
     const query = searchInput.value.trim().toLowerCase();
 
-    if (!query) {
-        message.textContent =
-            "Please enter a satellite name or NORAD ID.";
-        return;
+    if (chandrayaanResult) {
+        chandrayaanResult.style.display = "none";
     }
 
-    const satellite = satelliteData.find(item =>
-        item.name.toLowerCase() === query ||
-        String(item.norad_id) === query
-    );
+    if (insatResult) {
+        insatResult.style.display = "none";
+    }
+
+    if (!query) {
+
+        message.textContent =
+            "Please enter a satellite name or NORAD ID.";
+
+        return;
+
+    }
+
+    const normalizedQuery = query.replace(/[\s-]/g, "");
+
+    // --------------------------------
+    // CHANDRAYAAN-3 SEARCH
+    // --------------------------------
+
+    if (
+        normalizedQuery === "chandrayaan3" ||
+        normalizedQuery === "chandrayaan"
+    ) {
+
+        if (chandrayaanResult) {
+
+            chandrayaanResult.style.display = "block";
+
+            message.textContent =
+                "🇮🇳 Chandrayaan-3 found! Explore its mission details below.";
+
+        } else {
+
+            message.textContent =
+                "Chandrayaan-3 found, but its preview card is missing. Check index.html.";
+
+        }
+
+        return;
+
+    }
+
+    // --------------------------------
+    // INSAT-3D SEARCH
+    // --------------------------------
+
+    if (
+        normalizedQuery === "insat3d" ||
+        normalizedQuery === "insat"
+    ) {
+
+        if (insatResult) {
+
+            insatResult.style.display = "block";
+
+            message.textContent =
+                "🇮🇳 INSAT-3D found! Explore India's weather satellite in 3D below.";
+
+        } else {
+
+            message.textContent =
+                "INSAT-3D found, but its preview card is missing. Check index.html.";
+
+        }
+
+        return;
+
+    }
+
+    // --------------------------------
+    // EXISTING EARTH SATELLITE SEARCH
+    // --------------------------------
+
+    const satellite = satelliteData.find(item => {
+
+        const satelliteName =
+            String(item.name || "").toLowerCase();
+
+        const satelliteId =
+            String(item.norad_id || "");
+
+        return (
+            satelliteName === query ||
+            satelliteId === query
+        );
+
+    });
 
     if (!satellite) {
+
         message.textContent =
-            "Satellite not found. Try ISS, NOAA-19 or Hubble.";
+            "Satellite not found. Try ISS, NOAA-19, Hubble, Chandrayaan-3 or INSAT-3D.";
+
         return;
+
     }
 
     message.textContent =
         `${satellite.name} found successfully! Opening 3D explorer...`;
 
-    world.pointOfView({
-        lat: satellite.latitude,
-        lng: satellite.longitude,
-        altitude: 1.8
-    }, 1500);
+    if (world) {
+
+        world.pointOfView({
+            lat: satellite.latitude,
+            lng: satellite.longitude,
+            altitude: 1.8
+        }, 1500);
+
+    }
 
     showSatelliteDetails(satellite);
 
-    // OPEN THE 3D MODEL
     openSatelliteViewer(satellite);
+
 }
 
-document.getElementById("searchButton")
-    .addEventListener("click", searchSatellite);
+// --------------------------------
+// SEARCH EVENT LISTENERS
+// --------------------------------
 
-document.getElementById("satelliteSearch")
-    .addEventListener("keydown", event => {
+const searchButton =
+    document.getElementById("searchButton");
+
+const satelliteSearchInput =
+    document.getElementById("satelliteSearch");
+
+if (searchButton) {
+    searchButton.addEventListener("click", searchSatellite);
+}
+
+if (satelliteSearchInput) {
+
+    satelliteSearchInput.addEventListener("keydown", event => {
 
         if (event.key === "Enter") {
             searchSatellite();
         }
+
     });
+
+}
 
 // --------------------------------
 // FORMAT PASS TIMES
@@ -549,6 +750,7 @@ function formatPassTime(dateString) {
         hour12: true,
         timeZone: "Asia/Kolkata"
     });
+
 }
 
 // --------------------------------
@@ -557,9 +759,21 @@ function formatPassTime(dateString) {
 
 async function loadSatellitePasses() {
 
-    const button = document.getElementById("loadPassesButton");
-    const message = document.getElementById("passMessage");
-    const results = document.getElementById("passResults");
+    const button =
+        document.getElementById("loadPassesButton");
+
+    const message =
+        document.getElementById("passMessage");
+
+    const results =
+        document.getElementById("passResults");
+
+    if (!button || !message || !results) {
+        console.warn(
+            "Satellite pass prediction elements are not present in index.html."
+        );
+        return;
+    }
 
     button.disabled = true;
     button.textContent = "Calculating passes...";
@@ -572,6 +786,7 @@ async function loadSatellitePasses() {
     try {
 
         const response = await fetch("/api/passes");
+
         const data = await response.json();
 
         if (!response.ok) {
@@ -597,6 +812,7 @@ async function loadSatellitePasses() {
             `;
 
             return;
+
         }
 
         results.innerHTML = passes.map((pass, index) => `
@@ -664,11 +880,8 @@ async function loadSatellitePasses() {
         message.textContent =
             "Unable to load satellite predictions. Check the backend.";
 
-        results.innerHTML = `
-            <div class="pass-empty">
-                <p>Prediction error: ${error.message}</p>
-            </div>
-        `;
+        results.textContent =
+            "Prediction error: " + error.message;
 
     } finally {
 
@@ -676,11 +889,26 @@ async function loadSatellitePasses() {
 
         button.textContent =
             "Calculate Next 24 Hours 🚀";
+
     }
+
 }
 
-document.getElementById("loadPassesButton")
-    .addEventListener("click", loadSatellitePasses);
+// --------------------------------
+// PASS BUTTON - SAFE EVENT LISTENER
+// --------------------------------
+
+const loadPassesButton =
+    document.getElementById("loadPassesButton");
+
+if (loadPassesButton) {
+
+    loadPassesButton.addEventListener(
+        "click",
+        loadSatellitePasses
+    );
+
+}
 
 // --------------------------------
 // START ORBITVIEW

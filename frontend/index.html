@@ -147,8 +147,128 @@
         #satellite-tracking,
         #communication-analysis,
         #satellite-prediction,
-        #space-alerts {
+        #space-alerts,
+        #lunar-mission,
+        #bug-error-center {
             scroll-margin-top: 100px;
+        }
+
+        /* MISSION SEARCH PREVIEW CARDS */
+
+        #chandrayaanSearchResult,
+        #insatSearchResult {
+            margin-top: 20px;
+            animation: searchCardAppear 0.4s ease;
+        }
+
+        .chandrayaan-search-card,
+        .insat-search-card {
+            display: grid;
+            grid-template-columns: minmax(0, 1fr) minmax(250px, 0.8fr);
+            gap: 22px;
+            align-items: center;
+            background: linear-gradient(
+                135deg,
+                rgba(17, 27, 51, 0.98),
+                rgba(15, 39, 75, 0.95)
+            );
+            border: 1px solid rgba(54, 217, 255, 0.35);
+            border-radius: 17px;
+            padding: 24px;
+            box-shadow: 0 10px 35px rgba(0, 0, 0, 0.2);
+        }
+
+        .chandrayaan-search-card h3,
+        .insat-search-card h3 {
+            color: #F4F8FF;
+            font-size: 25px;
+            margin: 10px 0;
+        }
+
+        .chandrayaan-search-card p,
+        .insat-search-card p {
+            color: #AFC4E8;
+            line-height: 1.7;
+            font-size: 14px;
+        }
+
+        .chandrayaan-search-card .mission-label,
+        .insat-search-card .mission-label {
+            display: inline-block;
+            padding: 7px 12px;
+            border-radius: 20px;
+            background: rgba(54, 217, 255, 0.1);
+            color: #36D9FF;
+            font-size: 11px;
+            font-weight: 800;
+            letter-spacing: 1px;
+        }
+
+        .chandrayaan-search-card .mission-info,
+        .insat-search-card .mission-info {
+            display: flex;
+            justify-content: space-between;
+            gap: 15px;
+            padding: 11px 0;
+            border-bottom: 1px solid rgba(107, 159, 255, 0.15);
+            color: #AFC4E8;
+            font-size: 14px;
+        }
+
+        .chandrayaan-search-card .mission-info strong,
+        .insat-search-card .mission-info strong {
+            color: #FFFFFF;
+            text-align: right;
+        }
+
+        .chandrayaan-preview-art,
+        .insat-preview-art {
+            min-height: 190px;
+            border-radius: 13px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-direction: column;
+            gap: 10px;
+            background:
+                radial-gradient(circle at 50% 45%, rgba(54,217,255,0.17), transparent 65%),
+                #070F20;
+            border: 1px solid rgba(54, 217, 255, 0.15);
+            text-align: center;
+        }
+
+        .chandrayaan-preview-art .mission-emoji,
+        .insat-preview-art .mission-emoji {
+            font-size: 75px;
+        }
+
+        .chandrayaan-preview-art span:last-child,
+        .insat-preview-art span:last-child {
+            color: #AFC4E8;
+            font-size: 12px;
+        }
+
+        .chandrayaan-search-card .explorer-button,
+        .insat-search-card .explorer-button {
+            margin-top: 18px;
+            width: 100%;
+            background: linear-gradient(135deg, #318BFF, #36D9FF);
+            color: #07101F;
+            border: none;
+            font-size: 14px;
+            padding: 14px;
+        }
+
+        @keyframes searchCardAppear {
+            from {
+                opacity: 0;
+                transform: translateY(12px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
         }
 
         /* SPACE ALERT DASHBOARD */
@@ -304,18 +424,19 @@
             line-height: 1.7;
         }
 
-        /* 3D SATELLITE EXPLORER */
+        /* INTERACTIVE 3D EXPLORER */
 
         .satellite-3d-modal {
             display: none;
             position: fixed;
             inset: 0;
             z-index: 5000;
-            background: rgba(3, 7, 20, 0.88);
+            background: rgba(3, 7, 20, 0.92);
             backdrop-filter: blur(12px);
             justify-content: center;
             align-items: center;
             padding: 20px;
+            overflow-y: auto;
         }
 
         .satellite-3d-modal.active {
@@ -323,11 +444,12 @@
         }
 
         .satellite-3d-container {
-            width: min(950px, 100%);
+            width: min(1250px, 100%);
+            max-height: 95vh;
+            overflow-y: auto;
             background: #0B1226;
             border: 1px solid rgba(54, 217, 255, 0.3);
             border-radius: 20px;
-            overflow: hidden;
             box-shadow: 0 0 40px rgba(49, 139, 255, 0.2);
         }
 
@@ -336,6 +458,7 @@
             justify-content: space-between;
             align-items: center;
             padding: 22px 25px;
+            border-bottom: 1px solid rgba(107, 159, 255, 0.15);
         }
 
         .satellite-3d-header h2 {
@@ -363,6 +486,23 @@
             background: #318BFF;
         }
 
+        /* EXPLORER LAYOUT */
+
+        .explorer-layout {
+            display: grid;
+            grid-template-columns: minmax(0, 1.6fr) minmax(280px, 0.9fr);
+            gap: 20px;
+            padding: 20px;
+        }
+
+        .explorer-model-section {
+            min-width: 0;
+            background: #070B1A;
+            border: 1px solid rgba(54, 217, 255, 0.16);
+            border-radius: 15px;
+            overflow: hidden;
+        }
+
         #satellite3DScene {
             width: 100%;
             height: 480px;
@@ -373,17 +513,283 @@
             display: block;
             width: 100%;
             height: 100%;
+            cursor: grab;
         }
+
+        #satellite3DScene canvas:active {
+            cursor: grabbing;
+        }
+
+        /* MODEL CONTROLS */
+
+        .explorer-controls {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 10px;
+            padding: 15px;
+            border-top: 1px solid rgba(107, 159, 255, 0.15);
+        }
+
+        .explorer-button {
+            background: #172440;
+            color: #D6E1F5;
+            border: 1px solid rgba(54, 217, 255, 0.25);
+            padding: 11px 15px;
+            border-radius: 9px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: 0.25s ease;
+        }
+
+        .explorer-button:hover {
+            background: #318BFF;
+            color: white;
+            transform: translateY(-2px);
+        }
+
+        /* COMPONENT PANEL */
+
+        .component-panel {
+            background: #111B33;
+            border: 1px solid rgba(54, 217, 255, 0.18);
+            border-radius: 15px;
+            padding: 20px;
+            min-width: 0;
+        }
+
+        .component-panel h3 {
+            color: #F4F8FF;
+            margin: 12px 0;
+            font-size: 21px;
+        }
+
+        .component-intro {
+            color: #AFC4E8;
+            font-size: 13px;
+            line-height: 1.6;
+        }
+
+        .component-buttons {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 9px;
+            margin: 20px 0;
+        }
+
+        .component-button {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            background: #172440;
+            border: 1px solid rgba(107, 159, 255, 0.2);
+            color: #D6E1F5;
+            padding: 11px 9px;
+            border-radius: 9px;
+            font-size: 12px;
+            font-weight: 600;
+            text-align: left;
+            cursor: pointer;
+            transition: 0.25s ease;
+        }
+
+        .component-button:hover {
+            border-color: #36D9FF;
+            background: rgba(49, 139, 255, 0.15);
+        }
+
+        .component-button.selected {
+            background: rgba(49, 139, 255, 0.22);
+            border-color: #36D9FF;
+            color: #FFFFFF;
+            box-shadow: 0 0 12px rgba(54, 217, 255, 0.12);
+        }
+
+        .component-button span {
+            font-size: 17px;
+        }
+
+        /* COMPONENT INFORMATION */
+
+        .component-information {
+            margin-top: 20px;
+            padding: 17px;
+            background: #070F20;
+            border: 1px solid rgba(54, 217, 255, 0.22);
+            border-radius: 12px;
+        }
+
+        .component-info-label {
+            color: #36D9FF;
+            font-size: 10px;
+            font-weight: 800;
+            letter-spacing: 1.5px;
+        }
+
+        .component-information h3 {
+            color: #F4F8FF;
+            font-size: 19px;
+            margin: 12px 0;
+        }
+
+        .component-information p {
+            color: #AFC4E8;
+            font-size: 13px;
+            line-height: 1.7;
+        }
+
+        .component-purpose {
+            margin-top: 18px;
+            padding-top: 14px;
+            border-top: 1px solid rgba(107, 159, 255, 0.2);
+        }
+
+        .component-purpose strong {
+            color: #36D9FF;
+            font-size: 13px;
+        }
+
+        .component-purpose p {
+            margin-bottom: 0;
+        }
+
+        /* FOOTER AND DISCLAIMER */
 
         .satellite-3d-footer {
             display: flex;
             justify-content: space-around;
             flex-wrap: wrap;
             gap: 12px;
-            padding: 18px;
+            padding: 15px;
             color: #AFC4E8;
             font-size: 13px;
             border-top: 1px solid rgba(107, 159, 255, 0.18);
+        }
+
+        .explorer-disclaimer {
+            text-align: center;
+            padding: 13px;
+            color: #8495B5;
+            background: rgba(7, 11, 26, 0.8);
+            font-size: 12px;
+            border-top: 1px solid rgba(107, 159, 255, 0.15);
+        }
+
+        /* BUG & ERROR CENTER */
+
+        .bug-center-grid {
+            display: grid;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            gap: 16px;
+            margin: 25px 0;
+        }
+
+        .bug-stat-card {
+            background: rgba(17, 27, 51, 0.9);
+            border: 1px solid rgba(54, 217, 255, 0.2);
+            border-radius: 14px;
+            padding: 22px;
+            text-align: center;
+        }
+
+        .bug-stat-card span {
+            display: block;
+            color: #AFC4E8;
+            margin-bottom: 10px;
+        }
+
+        .bug-stat-card strong {
+            display: block;
+            font-size: 24px;
+            color: #36D9FF;
+        }
+
+        .bug-center-message {
+            padding: 16px;
+            margin: 20px 0;
+            background: rgba(49, 139, 255, 0.08);
+            border: 1px solid rgba(54, 217, 255, 0.2);
+            border-radius: 12px;
+            color: #D6E1F5;
+            line-height: 1.7;
+        }
+
+        .bug-center-controls {
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+            margin: 20px 0;
+        }
+
+        .bug-center-button {
+            background: linear-gradient(135deg, #318BFF, #36D9FF);
+            color: #07101F;
+            border: none;
+            border-radius: 10px;
+            padding: 13px 20px;
+            font-weight: 800;
+            cursor: pointer;
+        }
+
+        .bug-form,
+        .bug-list-panel {
+            background: #111B33;
+            border: 1px solid rgba(54, 217, 255, 0.2);
+            border-radius: 14px;
+            padding: 22px;
+            margin: 20px 0;
+        }
+
+        .bug-form label {
+            display: block;
+            color: #D6E1F5;
+            margin: 15px 0 8px;
+            font-weight: 600;
+        }
+
+        .bug-form input,
+        .bug-form select,
+        .bug-form textarea {
+            width: 100%;
+            padding: 13px;
+            border-radius: 9px;
+            border: 1px solid rgba(107, 159, 255, 0.3);
+            background: #070F20;
+            color: #FFFFFF;
+            font-size: 14px;
+        }
+
+        .bug-form textarea {
+            min-height: 120px;
+            resize: vertical;
+        }
+
+        .bug-form button {
+            margin-top: 18px;
+        }
+
+        .bug-item {
+            background: #070F20;
+            border: 1px solid rgba(107, 159, 255, 0.2);
+            border-radius: 10px;
+            padding: 16px;
+            margin: 12px 0;
+            color: #AFC4E8;
+            overflow-wrap: anywhere;
+        }
+
+        .bug-item strong {
+            color: #36D9FF;
+        }
+
+        .bug-item p {
+            line-height: 1.6;
+            margin: 8px 0;
+        }
+
+        .bug-list-panel h3,
+        .bug-form h3 {
+            color: #F4F8FF;
         }
 
         /* MOBILE */
@@ -399,6 +805,31 @@
             }
 
             .alert-results {
+                grid-template-columns: 1fr;
+            }
+
+            .explorer-layout {
+                grid-template-columns: 1fr;
+            }
+
+            .component-buttons {
+                grid-template-columns: 1fr 1fr;
+            }
+
+            .satellite-3d-container {
+                max-height: 95vh;
+            }
+
+            .chandrayaan-search-card,
+            .insat-search-card {
+                grid-template-columns: 1fr;
+            }
+
+        }
+
+        @media (max-width: 700px) {
+
+            .bug-center-grid {
                 grid-template-columns: 1fr;
             }
 
@@ -441,12 +872,24 @@
                 padding: 9px 10px;
             }
 
+            .satellite-3d-header {
+                padding: 16px;
+            }
+
             .satellite-3d-header h2 {
                 font-size: 21px;
             }
 
+            .explorer-layout {
+                padding: 12px;
+            }
+
             #satellite3DScene {
                 height: 350px;
+            }
+
+            .component-buttons {
+                grid-template-columns: 1fr 1fr;
             }
 
             .satellite-3d-footer {
@@ -455,6 +898,11 @@
 
             .alert-overview {
                 grid-template-columns: 1fr;
+            }
+
+            .explorer-button {
+                font-size: 12px;
+                padding: 10px;
             }
 
         }
@@ -475,7 +923,6 @@
 </head>
 
 <body>
-
 <!-- HEADER -->
 
 <header class="main-header">
@@ -500,14 +947,12 @@
     <nav class="top-navigation">
 
         <a href="#home">🏠 Home</a>
-
         <a href="#satellite-tracking">🛰️ Satellite Tracking</a>
-
         <a href="#communication-analysis">📡 Communication Analysis</a>
-
         <a href="#satellite-prediction">🌅 Satellite Prediction</a>
-
         <a href="#space-alerts">🚨 Space Alerts</a>
+        <a href="#lunar-mission">🇮🇳 Chandrayaan-3</a>
+        <a href="#bug-error-center">🛠️ Bug &amp; Error Center</a>
 
     </nav>
 
@@ -583,6 +1028,130 @@
 
         <p id="searchMessage" class="message"></p>
 
+        <!-- CHANDRAYAAN-3 SEARCH RESULT -->
+
+        <div id="chandrayaanSearchResult" style="display: none;">
+
+            <div class="chandrayaan-search-card">
+
+                <div>
+
+                    <span class="mission-label">
+                        🇮🇳 INDIAN LUNAR MISSION
+                    </span>
+
+                    <h3>🌕 Chandrayaan-3</h3>
+
+                    <p>
+                        Explore India's lunar exploration mission
+                        through an interactive 3D educational model.
+                    </p>
+
+                    <div class="mission-info">
+                        <span>Lander</span>
+                        <strong>Vikram</strong>
+                    </div>
+
+                    <div class="mission-info">
+                        <span>Rover</span>
+                        <strong>Pragyan</strong>
+                    </div>
+
+                    <div class="mission-info">
+                        <span>Landing Date</span>
+                        <strong>23 August 2023</strong>
+                    </div>
+
+                    <button
+                        class="explorer-button"
+                        onclick="window.openSatellite3D({
+                            name: 'Chandrayaan-3',
+                            id: 'CHANDRAYAAN3'
+                        })">
+
+                        🚀 Explore Chandrayaan-3 in 3D
+
+                    </button>
+
+                </div>
+
+                <div class="chandrayaan-preview-art">
+
+                    <span class="mission-emoji">🌕🚀</span>
+
+                    <strong>Vikram Lander &amp; Pragyan Rover</strong>
+
+                    <span>Interactive 3D Mission Explorer</span>
+
+                </div>
+
+            </div>
+
+        </div>
+
+        <!-- INSAT-3D SEARCH RESULT -->
+
+        <div id="insatSearchResult" style="display: none;">
+
+            <div class="insat-search-card">
+
+                <div>
+
+                    <span class="mission-label">
+                        🇮🇳 INDIAN WEATHER SATELLITE
+                    </span>
+
+                    <h3>🌦️ INSAT-3D</h3>
+
+                    <p>
+                        Explore India's meteorological satellite through
+                        an interactive 3D educational model. INSAT-3D
+                        supports weather observation, atmospheric studies
+                        and disaster warning services.
+                    </p>
+
+                    <div class="mission-info">
+                        <span>Satellite Type</span>
+                        <strong>Meteorological</strong>
+                    </div>
+
+                    <div class="mission-info">
+                        <span>Orbit</span>
+                        <strong>Geostationary</strong>
+                    </div>
+
+                    <div class="mission-info">
+                        <span>Primary Purpose</span>
+                        <strong>Weather Observation</strong>
+                    </div>
+
+                    <button
+                        class="explorer-button"
+                        onclick="window.openSatellite3D({
+                            name: 'INSAT-3D',
+                            id: 'INSAT3D'
+                        })">
+
+                        🚀 Explore INSAT-3D in 3D
+
+                    </button>
+
+                </div>
+
+                <div class="insat-preview-art">
+
+                    <span class="mission-emoji">🌦️🛰️</span>
+
+                    <strong>INSAT-3D Weather Satellite</strong>
+
+                    <span>Interactive 3D Mission Explorer</span>
+
+                </div>
+
+            </div>
+
+        </div>
+
     </section>
 
     <!-- 3D EARTH -->
@@ -602,405 +1171,441 @@
         <div id="globeViz"></div>
 
     </section>
-
+    
     <!-- SATELLITE INFORMATION -->
 
     <section class="section-panel">
 
         <div class="section-heading">
-
-            <span class="section-tag">ORBITAL DATA</span>
-
+            <span class="section-tag">SATELLITE DATABASE</span>
             <h2>🛰️ Satellite Information</h2>
-
-            <p>Current position and velocity estimates.</p>
-
+            <p>Explore some well-known satellites and their missions.</p>
         </div>
 
-        <div class="satellite-grid">
+        <div class="feature-grid">
 
-            <!-- ISS -->
-
-            <div class="satellite-card">
-
-                <h3>🛰️ ISS</h3>
-
-                <p id="iss-status">Loading...</p>
-
-                <div class="satellite-info">
-                    <span>Altitude</span>
-                    <strong id="iss-altitude">--</strong>
-                </div>
-
-                <div class="satellite-info">
-                    <span>Latitude</span>
-                    <strong id="iss-latitude">--</strong>
-                </div>
-
-                <div class="satellite-info">
-                    <span>Longitude</span>
-                    <strong id="iss-longitude">--</strong>
-                </div>
-
-                <div class="satellite-info">
-                    <span>Velocity</span>
-                    <strong id="iss-velocity">--</strong>
-                </div>
-
-                <p id="iss-tracking">Waiting for data...</p>
-
+            <div class="feature-card">
+                <div class="feature-icon">🛰️</div>
+                <h3>International Space Station</h3>
+                <p> NORAD ID: 25544</p>
+                <p>A habitable research laboratory orbiting Earth.</p>
             </div>
 
-            <!-- NOAA -->
-
-            <div class="satellite-card">
-
-                <h3>🌤️ NOAA-19</h3>
-
-                <p id="noaa-status">Loading...</p>
-
-                <div class="satellite-info">
-                    <span>Altitude</span>
-                    <strong id="noaa-altitude">--</strong>
-                </div>
-
-                <div class="satellite-info">
-                    <span>Latitude</span>
-                    <strong id="noaa-latitude">--</strong>
-                </div>
-
-                <div class="satellite-info">
-                    <span>Longitude</span>
-                    <strong id="noaa-longitude">--</strong>
-                </div>
-
-                <div class="satellite-info">
-                    <span>Velocity</span>
-                    <strong id="noaa-velocity">--</strong>
-                </div>
-
-                <p id="noaa-tracking">Waiting for data...</p>
-
+            <div class="feature-card">
+                <div class="feature-icon">🌦️</div>
+                <h3>NOAA-19</h3>
+                <p>Weather observation satellite.</p>
+                <p>Supports environmental monitoring.</p>
             </div>
 
-            <!-- HUBBLE -->
-
-            <div class="satellite-card">
-
-                <h3>🔭 Hubble</h3>
-
-                <p id="hubble-status">Loading...</p>
-
-                <div class="satellite-info">
-                    <span>Altitude</span>
-                    <strong id="hubble-altitude">--</strong>
-                </div>
-
-                <div class="satellite-info">
-                    <span>Latitude</span>
-                    <strong id="hubble-latitude">--</strong>
-                </div>
-
-                <div class="satellite-info">
-                    <span>Longitude</span>
-                    <strong id="hubble-longitude">--</strong>
-                </div>
-
-                <div class="satellite-info">
-                    <span>Velocity</span>
-                    <strong id="hubble-velocity">--</strong>
-                </div>
-
-                <p id="hubble-tracking">Waiting for data...</p>
-
+            <div class="feature-card">
+                <div class="feature-icon">🔭</div>
+                <h3>Hubble Space Telescope</h3>
+                <p>Observes distant stars, galaxies and other objects.</p>
+                <p>Supports astronomical research.</p>
             </div>
 
         </div>
 
     </section>
+
+
+    <!-- CHANDRAYAAN-3 MISSION -->
+
+    <section class="section-panel" id="lunar-mission">
+
+        <div class="section-heading">
+            <span class="section-tag">INDIAN SPACE EXPLORATION</span>
+            <h2>🇮🇳 Chandrayaan-3 Mission</h2>
+            <p>Explore India's historic lunar exploration mission.</p>
+        </div>
+
+        <div class="feature-grid">
+
+            <div class="feature-card">
+                <div class="feature-icon">🚀</div>
+                <h3>Launch</h3>
+                <p>14 August 2023</p>
+            </div>
+
+            <div class="feature-card">
+                <div class="feature-icon">🌕</div>
+                <h3>Moon Landing</h3>
+                <p>23 August 2023</p>
+            </div>
+
+            <div class="feature-card">
+                <div class="feature-icon">🤖</div>
+                <h3>Mission Components</h3>
+                <p>Vikram Lander and Pragyan Rover.</p>
+            </div>
+
+        </div>
+
+    </section>
+
 
     <!-- SATELLITE PASS PREDICTION -->
 
     <section class="section-panel" id="satellite-prediction">
 
         <div class="section-heading">
-
             <span class="section-tag">ORBITAL PREDICTION</span>
-
             <h2>🌅 Satellite Pass Prediction</h2>
-
-            <p>Estimate when satellites pass above Bengaluru.</p>
-
+            <p>Understand when a satellite may pass over a ground station.</p>
         </div>
 
-        <div class="pass-control">
-
-            <div>
-                <span>📍 Ground Station</span>
-                <strong>Bengaluru, India</strong>
-            </div>
-
-            <div>
-                <span>⏳ Prediction Period</span>
-                <strong>Next 24 Hours</strong>
-            </div>
-
-            <div>
-                <span>📐 Minimum Elevation</span>
-                <strong>10°</strong>
-            </div>
-
+        <div class="feature-card">
+            <h3>📍 Ground Station</h3>
+            <p>Bengaluru, India</p>
+            <p>Pass prediction depends on satellite orbital data and observer location.</p>
+            <p id="predictionMessage" class="message">
+                Open the satellite tracking section to explore satellite data.
+            </p>
         </div>
-
-        <button id="loadPassesButton">
-            Calculate Satellite Passes
-        </button>
-
-        <p id="passMessage" class="message"></p>
-
-        <div id="passResults" class="pass-results"></div>
 
     </section>
+
 
     <!-- COMMUNICATION ANALYSIS -->
 
     <section class="section-panel" id="communication-analysis">
 
         <div class="section-heading">
-
-            <span class="section-tag">SPACE COMMUNICATION</span>
-
-            <h2>📡 Satellite Communication Analysis</h2>
-
-            <p>
-                Calculate signal propagation delay, distance,
-                free-space path loss and an illustrative link budget.
-            </p>
-
+            <span class="section-tag">SIGNAL ANALYSIS</span>
+            <h2>📡 Communication Analysis</h2>
+            <p>Explore basic satellite communication concepts.</p>
         </div>
 
-        <div class="communication-controls">
+        <div class="feature-grid">
 
-            <div class="input-group">
-
-                <label for="communicationSatellite">
-                    Select Satellite
-                </label>
-
-                <select id="communicationSatellite">
-
-                    <option value="25544">ISS</option>
-                    <option value="33591">NOAA-19</option>
-                    <option value="20580">Hubble</option>
-
-                </select>
-
+            <div class="feature-card">
+                <div class="feature-icon">📶</div>
+                <h3>Signal Strength</h3>
+                <p>Signal strength represents the received signal power.</p>
             </div>
 
-            <div class="input-group">
-
-                <label>Ground Station</label>
-
-                <div class="station-display">
-                    📍 Bengaluru, India
-                </div>
-
+            <div class="feature-card">
+                <div class="feature-icon">⏱️</div>
+                <h3>Signal Delay</h3>
+                <p>Time taken by a signal to travel between two points.</p>
             </div>
 
-        </div>
-
-        <button id="analyzeCommunicationButton">
-            Analyze Communication
-        </button>
-
-        <p id="communicationMessage" class="message"></p>
-
-        <div id="communicationResults" class="communication-results">
-
-            <div class="communication-placeholder">
-
-                <div class="placeholder-icon">📡</div>
-
-                <h3>Ready for Analysis</h3>
-
-                <p>Select a satellite and click Analyze Communication.</p>
-
+            <div class="feature-card">
+                <div class="feature-icon">🌐</div>
+                <h3>Communication Link</h3>
+                <p>Communication between satellites and ground stations.</p>
             </div>
-
-        </div>
-
-        <div class="simulation-note">
-
-            <strong>Simulation Note</strong>
-
-            <p>
-                Results are educational estimates. Frequency and
-                link-budget assumptions do not represent actual
-                satellite communication hardware or a real RF connection.
-            </p>
 
         </div>
 
     </section>
 
-    <!-- SPACE OBJECT PROXIMITY ALERTS -->
+
+    <!-- SPACE ALERTS -->
 
     <section class="section-panel" id="space-alerts">
 
         <div class="section-heading">
+            <span class="section-tag">SPACE MONITORING</span>
+            <h2>🚨 Space Alerts</h2>
+            <p>View space-related alerts provided by the OrbitView backend.</p>
+        </div>
 
-            <span class="section-tag">SPACE SAFETY MONITORING</span>
+        <div class="feature-card">
 
-            <h2>🚨 Space Object Proximity Alerts</h2>
+            <h3>Space Alert Monitor</h3>
+
+            <p id="spaceAlertStatus">Waiting for alert information...</p>
 
             <p>
-                Monitor simulated nearby space objects and receive
-                Telegram notifications when a demo warning is generated.
+                Total Alerts:
+                <strong id="totalAlertCount">0</strong>
             </p>
 
-        </div>
+            <p id="telegramStatus">Telegram status: Not checked</p>
 
-        <!-- ALERT STATISTICS -->
-
-        <div class="alert-overview">
-
-            <div class="alert-stat-card">
-
-                <span>🚨 Total Alerts</span>
-
-                <strong id="totalAlertCount">0</strong>
-
-            </div>
-
-            <div class="alert-stat-card">
-
-                <span>📏 Warning Threshold</span>
-
-                <strong>10 km</strong>
-
-            </div>
-
-            <div class="alert-stat-card">
-
-                <span>📡 Notification</span>
-
-                <strong id="telegramStatus">Ready</strong>
-
-            </div>
-
-        </div>
-
-        <!-- ALERT STATUS -->
-
-        <div id="spaceAlertStatus" class="alert-status">
-
-            🛰️ Space alert system is ready.
-
-            Click the button below to generate a simulated alert check.
-
-        </div>
-
-        <!-- ALERT BUTTON -->
-
-        <div class="alert-controls">
-
-            <button id="generateAlertButton">
-
-                🚨 Generate Demo Alert
-
+            <button id="generateAlertButton" type="button">
+                Generate Space Alerts
             </button>
 
-        </div>
-
-        <p id="spaceAlertMessage" class="message"></p>
-
-        <!-- ALERT RESULTS -->
-
-        <div id="spaceAlertResults" class="alert-results">
-
-            <div class="alert-empty">
-
-                <div class="empty-icon">🛰️</div>
-
-                <h3>No Alerts Generated Yet</h3>
-
-                <p>
-                    Click Generate Demo Alert to run the simulation.
-                </p>
-
-            </div>
+            <p id="spaceAlertMessage" class="message"></p>
 
         </div>
 
-        <!-- SIMULATION DISCLAIMER -->
+        <div id="spaceAlertResults"></div>
 
-        <div class="alert-simulation-note">
+    </section>
 
-            <strong>⚠️ Educational Simulation Only</strong>
+
+    <!-- BUG AND ERROR CENTER STYLES -->
+
+    <style>
+
+        .bug-center-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 18px;
+            margin: 20px 0;
+        }
+
+        .bug-stat-card {
+            background: rgba(20, 35, 65, 0.8);
+            border: 1px solid rgba(120, 160, 255, 0.25);
+            border-radius: 14px;
+            padding: 20px;
+        }
+
+        .bug-stat-card h3 {
+            margin-bottom: 12px;
+        }
+
+        .bug-stat-value {
+            font-size: 25px;
+            font-weight: bold;
+            color: #79baff;
+        }
+
+        .bug-form {
+            display: grid;
+            gap: 14px;
+            margin-top: 20px;
+        }
+
+        .bug-form input,
+        .bug-form select,
+        .bug-form textarea {
+            width: 100%;
+            padding: 12px;
+            border-radius: 8px;
+            border: 1px solid #52617d;
+            background: #101b32;
+            color: white;
+            font: inherit;
+        }
+
+        .bug-form textarea {
+            min-height: 110px;
+            resize: vertical;
+        }
+
+        .bug-form button,
+        #refreshBugCenterButton {
+            padding: 12px 18px;
+            border: none;
+            border-radius: 8px;
+            background: #286bd6;
+            color: white;
+            cursor: pointer;
+            font-weight: bold;
+        }
+
+        .bug-list-item {
+            background: rgba(20, 35, 65, 0.8);
+            border: 1px solid rgba(120, 160, 255, 0.2);
+            border-radius: 10px;
+            padding: 15px;
+            margin: 12px 0;
+            overflow-wrap: anywhere;
+        }
+
+        .bug-list-item h4 {
+            margin-bottom: 8px;
+            color: #9bc9ff;
+        }
+
+        .bug-list-item p {
+            margin: 6px 0;
+        }
+
+        .bug-muted {
+            opacity: 0.75;
+        }
+
+        .bug-message {
+            margin-top: 12px;
+            min-height: 20px;
+        }
+
+    </style>
+
+
+    <!-- BUG AND ERROR CENTER -->
+
+    <section class="section-panel" id="bug-error-center">
+
+        <div class="section-heading">
+
+            <span class="section-tag">SYSTEM MONITORING</span>
+
+            <h2>🛠️ Bug &amp; Error Center</h2>
 
             <p>
-                Space-object distances in this feature are randomly
-                generated demo values. They are not real measurements,
-                actual asteroid tracking data, or collision predictions.
+                Monitor backend health, view submitted bug reports
+                and check recorded server errors.
             </p>
 
         </div>
 
-    </section>
+        <!-- SYSTEM STATUS -->
 
-    <!-- DATA SOURCE -->
+        <div class="bug-center-grid">
 
-    <section class="data-note">
+            <div class="bug-stat-card">
+                <h3>🖥️ Backend Status</h3>
+                <div class="bug-stat-value" id="bugBackendStatus">
+                    Checking...
+                </div>
+            </div>
 
-        <h3>📚 Data Source & Accuracy</h3>
+            <div class="bug-stat-card">
+                <h3>🗄️ Database Status</h3>
+                <div class="bug-stat-value" id="bugDatabaseStatus">
+                    Checking...
+                </div>
+            </div>
 
-        <p>
-            Orbital elements are retrieved from CelesTrak and processed using Skyfield.
+            <div class="bug-stat-card">
+                <h3>📋 Bug Reports</h3>
+                <div class="bug-stat-value" id="bugReportCount">
+                    0
+                </div>
+            </div>
+
+        </div>
+
+        <p id="bugHealthMessage" class="bug-message">
+            Checking system health...
         </p>
 
-        <p>
-            Predictions are estimates, not direct satellite telemetry or guaranteed observations.
-        </p>
+        <button id="refreshBugCenterButton" type="button">
+            🔄 Refresh System Information
+        </button>
+
+
+        <!-- SUBMIT BUG REPORT -->
+
+        <div class="bug-stat-card" style="margin-top: 25px;">
+
+            <h3>📝 Submit a Bug Report</h3>
+
+            <p class="bug-muted">
+                Found an issue? Submit a report to the system.
+            </p>
+
+            <form id="bugReportForm" class="bug-form">
+
+                <input
+                    type="text"
+                    id="bugTitle"
+                    placeholder="Enter bug title"
+                    required
+                >
+
+                <select id="bugFeature" required>
+                    <option value="">Select affected feature</option>
+                    <option value="Satellite Tracking">Satellite Tracking</option>
+                    <option value="Satellite Prediction">Satellite Prediction</option>
+                    <option value="Communication Analysis">Communication Analysis</option>
+                    <option value="Space Alerts">Space Alerts</option>
+                    <option value="3D Visualization">3D Visualization</option>
+                    <option value="Other">Other</option>
+                </select>
+
+                <textarea
+                    id="bugDescription"
+                    placeholder="Describe the issue..."
+                    required
+                ></textarea>
+
+                <button type="submit" id="bugSubmitButton">
+                    Submit Bug Report
+                </button>
+
+            </form>
+
+            <p id="bugSubmitMessage" class="bug-message"></p>
+
+        </div>
+
+
+        <!-- BUG REPORT LIST -->
+
+        <div style="margin-top: 30px;">
+
+            <h3>📋 Submitted Bug Reports</h3>
+
+            <div id="bugReportsList">
+                <p class="bug-muted">Loading bug reports...</p>
+            </div>
+
+        </div>
+
+
+        <!-- SERVER ERROR LOGS -->
+
+        <div style="margin-top: 30px;">
+
+            <h3>⚠️ Server Error Logs</h3>
+
+            <div id="errorLogsList">
+                <p class="bug-muted">Loading error logs...</p>
+            </div>
+
+        </div>
 
     </section>
 
-</main>
-
-<!-- 3D SATELLITE EXPLORER POPUP -->
+    <!-- 3D SATELLITE VIEWER MODAL -->
 
 <div id="satellite3DModal" class="satellite-3d-modal">
 
     <div class="satellite-3d-container">
 
         <div class="satellite-3d-header">
-
             <div>
+                <h2 id="satellite3DTitle">3D Satellite Explorer</h2>
+                <p id="satellite3DSubtitle">Interactive satellite model</p>
+            </div>
 
-                <span class="section-tag">3D SPACE EXPLORER</span>
+            <button id="close3DViewer" class="close-3d-button" type="button">✕</button>
+        </div>
 
-                <h2 id="satellite3DTitle">Satellite Explorer</h2>
+        <div class="explorer-layout">
 
-                <p id="satellite3DSubtitle">
-                    Explore satellite in three dimensions
-                </p>
+            <div class="explorer-model-section">
+
+                <div id="satellite3DScene"></div>
+
+                <div class="explorer-controls">
+                    <button id="explodeButton" class="explorer-button" type="button">Explode View</button>
+                    <button id="rotate3DButton" class="explorer-button" type="button">Rotate</button>
+                    <button id="reset3DButton" class="explorer-button" type="button">Reset</button>
+                </div>
 
             </div>
 
-            <button id="close3DViewer" class="close-3d-button">
-                ✕
-            </button>
+            <div class="component-panel">
 
-        </div>
+                <h3>Satellite Components</h3>
 
-        <div id="satellite3DScene"></div>
+                <div class="component-buttons">
+                    <button class="component-button" type="button" data-component="body">Main Body</button>
+                    <button class="component-button" type="button" data-component="solar">Solar Panels</button>
+                    <button class="component-button" type="button" data-component="antenna">Antenna</button>
+                    <button class="component-button" type="button" data-component="truss">Structure</button>
+                    <button class="component-button" type="button" data-component="docking">Docking</button>
+                    <button class="component-button" type="button" data-component="sensors">Sensors</button>
+                    <button class="component-button" type="button" data-component="thrusters">Thrusters</button>
+                </div>
 
-        <div class="satellite-3d-footer">
+                <div class="component-information">
+                    <h3 id="componentTitle">Satellite Component</h3>
+                    <p id="componentDescription">Select a component to explore it.</p>
+                    <p id="componentPurpose"></p>
+                </div>
 
-            <span>🖱️ Drag to rotate</span>
-
-            <span>🔍 Scroll to zoom</span>
-
-            <span>🌌 Illustrative 3D Model</span>
+            </div>
 
         </div>
 
@@ -1008,187 +1613,450 @@
 
 </div>
 
-<!-- FOOTER -->
 
-<footer class="footer">
 
-    <h2>OrbitView 🛰️</h2>
+    <!-- FOOTER -->
 
-    <p>Satellite Tracking &amp; Communication Analysis Simulator</p>
+    <footer class="main-footer">
 
-    <p>Educational Space Technology Project</p>
+        <h3>🛰️ OrbitView</h3>
 
-</footer>
+        <p>
+            Satellite Tracking &amp; Communication Analysis Simulator
+        </p>
 
-<!-- JAVASCRIPT -->
+        <p>
+            Educational Space Technology Project
+        </p>
 
-<script src="https://unpkg.com/globe.gl"></script>
+        <p>© 2026 OrbitView</p>
 
-<script src="{{ url_for('static', filename='globe.js') }}"></script>
+    </footer>
 
-<script src="{{ url_for('static', filename='communication.js') }}"></script>
 
-<script type="module" src="{{ url_for('static', filename='satellite3d.js') }}"></script>
+    <!-- EXTERNAL JAVASCRIPT FILES -->
 
-<!-- SPACE ALERT JAVASCRIPT -->
+    <script src="https://unpkg.com/globe.gl"></script>
 
-<script>
+    <script src="{{ url_for('static', filename='globe.js') }}"></script>
+    <script type="module" src="{{ url_for('static', filename='satellite3d.js') }}"></script>
 
-document.addEventListener("DOMContentLoaded", function () {
+    <script src="{{ url_for('static', filename='communication.js') }}"></script>
 
-    const alertButton = document.getElementById("generateAlertButton");
 
-    const alertResults = document.getElementById("spaceAlertResults");
+    <!-- SPACE ALERT JAVASCRIPT -->
 
-    const alertMessage = document.getElementById("spaceAlertMessage");
+    <script>
 
-    const alertStatus = document.getElementById("spaceAlertStatus");
+        document.addEventListener("DOMContentLoaded", function () {
 
-    const totalAlertCount = document.getElementById("totalAlertCount");
+            const alertButton = document.getElementById("generateAlertButton");
 
-    const telegramStatus = document.getElementById("telegramStatus");
+            if (!alertButton) return;
 
+            alertButton.addEventListener("click", async function () {
 
-    alertButton.addEventListener("click", async function () {
+                const message = document.getElementById("spaceAlertMessage");
+                const status = document.getElementById("spaceAlertStatus");
+                const results = document.getElementById("spaceAlertResults");
+                const totalCount = document.getElementById("totalAlertCount");
+                const telegramStatus = document.getElementById("telegramStatus");
 
-        alertButton.disabled = true;
+                message.textContent = "Loading space alerts...";
+                status.textContent = "Checking alerts...";
+                results.innerHTML = "";
 
-        alertButton.textContent = "⏳ Checking...";
+                try {
 
-        alertMessage.textContent = "";
+                    const response = await fetch("/api/space-alerts");
 
-        alertStatus.className = "alert-status";
+                    if (!response.ok) {
+                        throw new Error("Unable to load space alerts.");
+                    }
 
-        alertStatus.textContent = "Checking simulated space-object proximity...";
+                    const data = await response.json();
 
-        try {
+                    const alerts = Array.isArray(data.alerts)
+                        ? data.alerts
+                        : [];
 
-            const response = await fetch("/api/space-alerts");
+                    totalCount.textContent =
+                        data.alert_count ?? alerts.length;
 
-            const data = await response.json();
+                    status.textContent =
+                        alerts.length > 0
+                            ? "Space alerts loaded."
+                            : "No alerts available.";
 
-            if (!response.ok) {
+                    telegramStatus.textContent =
+                        "Telegram status: " +
+                        (data.telegram_sent ? "Sent" : "Not sent");
 
-                throw new Error(data.error || "Unable to generate alerts.");
+                    if (alerts.length === 0) {
 
-            }
+                        results.innerHTML =
+                            "<p>No space alerts are currently available.</p>";
 
-            totalAlertCount.textContent = data.alert_count;
+                    } else {
 
-            const sentCount = data.alerts.filter(
-                alert => alert.telegram_sent
-            ).length;
+                        alerts.forEach(function (alert) {
 
-            telegramStatus.textContent = sentCount > 0
-                ? "Sent"
-                : "No new message";
+                            const card = document.createElement("div");
 
-            if (data.alerts.length === 0) {
+                            card.className = "bug-list-item";
 
-                alertResults.innerHTML = `
-                    <div class="alert-empty">
-                        <div class="empty-icon">🛰️</div>
-                        <h3>No Demo Warnings</h3>
-                        <p>No simulated object was within the warning threshold during this check.</p>
-                    </div>
-                `;
+                            const title = document.createElement("h4");
+                            title.textContent = alert.title || "Space Alert";
 
-                alertStatus.className = "alert-status success";
+                            const description = document.createElement("p");
+                            description.textContent =
+                                alert.description || alert.message || "No description available.";
 
-                alertStatus.textContent =
-                    "✅ Simulation completed. No demo warning generated.";
+                            card.appendChild(title);
+                            card.appendChild(description);
 
-            } else {
+                            results.appendChild(card);
 
-                alertStatus.className = "alert-status warning";
+                        });
 
-                alertStatus.textContent =
-                    `🚨 ${data.alert_count} simulated warning(s) generated.`;
+                    }
 
-                alertResults.innerHTML = data.alerts.map(alert => `
+                    message.textContent = "Space alert information updated.";
 
-                    <div class="space-alert-card">
+                } catch (error) {
 
-                        <span class="alert-warning-label">
-                            ⚠️ ${escapeHTML(alert.status)}
-                        </span>
+                    message.textContent = error.message;
+                    status.textContent = "Unable to load alerts.";
 
-                        <h3>🛰️ ${escapeHTML(alert.satellite)}</h3>
+                }
 
-                        <div class="alert-info-row">
-                            <span>Nearby Object</span>
-                            <strong>${escapeHTML(alert.object)}</strong>
-                        </div>
-
-                        <div class="alert-info-row">
-                            <span>Simulated Distance</span>
-                            <strong>${Number(alert.distance_km).toFixed(2)} km</strong>
-                        </div>
-
-                        <div class="alert-info-row">
-                            <span>Telegram Notification</span>
-                            <strong>${alert.telegram_sent ? "✅ Sent" : "Not sent"}</strong>
-                        </div>
-
-                        <div class="alert-info-row">
-                            <span>Timestamp</span>
-                            <strong>${escapeHTML(alert.timestamp)}</strong>
-                        </div>
-
-                    </div>
-
-                `).join("");
-
-            }
-
-            alertMessage.textContent = data.message;
-
-        } catch (error) {
-
-            alertStatus.className = "alert-status warning";
-
-            alertStatus.textContent = "❌ Unable to complete alert check.";
-
-            alertMessage.textContent = error.message;
-
-            console.error("Space alert error:", error);
-
-        } finally {
-
-            alertButton.disabled = false;
-
-            alertButton.textContent = "🚨 Generate Demo Alert";
-
-        }
-
-    });
-
-
-    function escapeHTML(value) {
-
-        return String(value).replace(/[&<>"']/g, function (character) {
-
-            return {
-
-                "&": "&amp;",
-
-                "<": "&lt;",
-
-                ">": "&gt;",
-
-                '"': "&quot;",
-
-                "'": "&#039;"
-
-            }[character];
+            });
 
         });
 
-    }
+    </script>
 
-});
 
-</script>
+    <!-- BUG AND ERROR CENTER JAVASCRIPT -->
+
+    <script>
+
+        document.addEventListener("DOMContentLoaded", function () {
+
+            const backendStatus = document.getElementById("bugBackendStatus");
+            const databaseStatus = document.getElementById("bugDatabaseStatus");
+            const reportCount = document.getElementById("bugReportCount");
+
+            const healthMessage = document.getElementById("bugHealthMessage");
+            const reportsList = document.getElementById("bugReportsList");
+            const logsList = document.getElementById("errorLogsList");
+
+            const refreshButton = document.getElementById("refreshBugCenterButton");
+            const reportForm = document.getElementById("bugReportForm");
+
+            const submitMessage = document.getElementById("bugSubmitMessage");
+
+
+            // SAFELY DISPLAY TEXT
+
+            function safeText(value) {
+
+                return String(value ?? "");
+
+            }
+
+
+            // LOAD SYSTEM HEALTH
+
+            async function loadSystemHealth() {
+
+                try {
+
+                    const response = await fetch("/api/system-health");
+
+                    if (!response.ok) {
+                        throw new Error("Health API request failed.");
+                    }
+
+                    const data = await response.json();
+
+                    const backendHealthy =
+                        data.status === "healthy" ||
+                        data.status === "ok" ||
+                        data.healthy === true;
+
+                    backendStatus.textContent =
+                        backendHealthy ? "Online" : (data.status || "Unknown");
+
+                    databaseStatus.textContent =
+                        data.database || data.database_status || "Connected";
+
+                    healthMessage.textContent =
+                        "System health information loaded successfully.";
+
+                } catch (error) {
+
+                    backendStatus.textContent = "Unavailable";
+                    databaseStatus.textContent = "Unknown";
+
+                    healthMessage.textContent =
+                        "Could not connect to the system health API. " +
+                        error.message;
+
+                }
+
+            }
+
+
+            // LOAD BUG REPORTS
+
+            async function loadBugReports() {
+
+                try {
+
+                    const response = await fetch("/api/bug-reports");
+
+                    if (!response.ok) {
+                        throw new Error("Could not load bug reports.");
+                    }
+
+                    const data = await response.json();
+
+                    const reports = Array.isArray(data)
+                        ? data
+                        : (data.reports || []);
+
+                    reportCount.textContent =
+                        data.count ?? reports.length;
+
+                    reportsList.innerHTML = "";
+
+                    if (reports.length === 0) {
+
+                        reportsList.textContent =
+                            "No bug reports have been submitted yet.";
+
+                        return;
+
+                    }
+
+                    reports.forEach(function (report) {
+
+                        const card = document.createElement("div");
+
+                        card.className = "bug-list-item";
+
+                        const title = document.createElement("h4");
+                        title.textContent =
+                            safeText(report.title || "Untitled Report");
+
+                        const feature = document.createElement("p");
+                        feature.textContent =
+                            "Feature: " + safeText(report.feature || "Not specified");
+
+                        const description = document.createElement("p");
+                        description.textContent =
+                            "Description: " +
+                            safeText(report.description || "No description");
+
+                        const status = document.createElement("p");
+                        status.textContent =
+                            "Status: " + safeText(report.status || "Submitted");
+
+                        card.appendChild(title);
+                        card.appendChild(feature);
+                        card.appendChild(description);
+                        card.appendChild(status);
+
+                        reportsList.appendChild(card);
+
+                    });
+
+                } catch (error) {
+
+                    reportsList.textContent = error.message;
+
+                }
+
+            }
+
+
+            // LOAD SERVER ERROR LOGS
+
+            async function loadErrorLogs() {
+
+                try {
+
+                    const response = await fetch("/api/error-logs");
+
+                    if (!response.ok) {
+                        throw new Error("Could not load error logs.");
+                    }
+
+                    const data = await response.json();
+
+                    const logs = Array.isArray(data)
+                        ? data
+                        : (data.logs || data.errors || []);
+
+                    logsList.innerHTML = "";
+
+                    if (logs.length === 0) {
+
+                        logsList.textContent =
+                            "No server error logs are available.";
+
+                        return;
+
+                    }
+
+                    logs.forEach(function (log) {
+
+                        const card = document.createElement("div");
+
+                        card.className = "bug-list-item";
+
+                        const title = document.createElement("h4");
+                        title.textContent =
+                            safeText(log.error || log.message || "Server Error");
+
+                        const endpoint = document.createElement("p");
+                        endpoint.textContent =
+                            "Endpoint: " + safeText(log.endpoint || log.path || "Not specified");
+
+                        const time = document.createElement("p");
+                        time.textContent =
+                            "Time: " + safeText(log.timestamp || log.created_at || "Not specified");
+
+                        card.appendChild(title);
+                        card.appendChild(endpoint);
+                        card.appendChild(time);
+
+                        logsList.appendChild(card);
+
+                    });
+
+                } catch (error) {
+
+                    logsList.textContent = error.message;
+
+                }
+
+            }
+
+
+            // REFRESH ALL INFORMATION
+
+            async function refreshBugCenter() {
+
+                await Promise.all([
+                    loadSystemHealth(),
+                    loadBugReports(),
+                    loadErrorLogs()
+                ]);
+
+            }
+
+
+            if (refreshButton) {
+
+                refreshButton.addEventListener(
+                    "click",
+                    refreshBugCenter
+                );
+
+            }
+
+
+            // SUBMIT A NEW BUG REPORT
+
+            if (reportForm) {
+
+                reportForm.addEventListener("submit", async function (event) {
+
+                    event.preventDefault();
+
+                    const title =
+                        document.getElementById("bugTitle").value.trim();
+
+                    const feature =
+                        document.getElementById("bugFeature").value;
+
+                    const description =
+                        document.getElementById("bugDescription").value.trim();
+
+                    if (!title || !feature || !description) {
+
+                        submitMessage.textContent =
+                            "Please complete all fields.";
+
+                        return;
+
+                    }
+
+                    const submitButton =
+                        document.getElementById("bugSubmitButton");
+
+                    submitButton.disabled = true;
+                    submitMessage.textContent = "Submitting report...";
+
+                    try {
+
+                        const response = await fetch("/api/bug-reports", {
+
+                            method: "POST",
+
+                            headers: {
+                                "Content-Type": "application/json"
+                            },
+
+                            body: JSON.stringify({
+                                title: title,
+                                feature: feature,
+                                description: description
+                            })
+
+                        });
+
+                        const data = await response.json();
+
+                        if (!response.ok) {
+
+                            throw new Error(
+                                data.error || data.message || "Report submission failed."
+                            );
+
+                        }
+
+                        submitMessage.textContent =
+                            "Bug report submitted successfully!";
+
+                        reportForm.reset();
+
+                        await loadBugReports();
+
+                    } catch (error) {
+
+                        submitMessage.textContent = error.message;
+
+                    } finally {
+
+                        submitButton.disabled = false;
+
+                    }
+
+                });
+
+            }
+
+
+            // INITIAL LOAD
+
+            refreshBugCenter();
+
+        });
+
+    </script>
 
 </body>
 </html>
