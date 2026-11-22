@@ -1245,62 +1245,69 @@
     </section>
 
 
-    <!-- SATELLITE PASS PREDICTION -->
+    
+<!-- SATELLITE PASS PREDICTION -->
 
-    <section class="section-panel" id="satellite-prediction">
+<section class="section-panel" id="satellite-prediction">
 
-        <div class="section-heading">
-            <span class="section-tag">ORBITAL PREDICTION</span>
-            <h2>🌅 Satellite Pass Prediction</h2>
-            <p>Understand when a satellite may pass over a ground station.</p>
-        </div>
+    <div class="section-heading">
+        <span class="section-tag">ORBITAL PREDICTION</span>
+        <h2>🌅 Satellite Pass Prediction</h2>
+        <p>Understand when a satellite may pass over a ground station.</p>
+    </div>
 
-        <div class="feature-card">
-            <h3>📍 Ground Station</h3>
-            <p>Bengaluru, India</p>
-            <p>Pass prediction depends on satellite orbital data and observer location.</p>
-            <p id="predictionMessage" class="message">
-                Open the satellite tracking section to explore satellite data.
-            </p>
-        </div>
+    <div class="feature-card">
 
-    </section>
+        <h3>📍 Ground Station</h3>
+        <p>Bengaluru, India</p>
+        <p>Minimum elevation: 10°</p>
+
+        <button id="predictPassesButton" type="button">
+            🔭 Predict Satellite Passes
+        </button>
+
+        <p id="predictionMessage" class="message">
+            Click the button to predict satellite passes over Bengaluru.
+        </p>
+
+    </div>
+
+    <div id="predictionResults"></div>
+
+</section>
 
 
     <!-- COMMUNICATION ANALYSIS -->
 
-    <section class="section-panel" id="communication-analysis">
+<section class="section-panel" id="communication-analysis">
 
-        <div class="section-heading">
-            <span class="section-tag">SIGNAL ANALYSIS</span>
-            <h2>📡 Communication Analysis</h2>
-            <p>Explore basic satellite communication concepts.</p>
-        </div>
+    <div class="section-heading">
+        <span class="section-tag">SIGNAL ANALYSIS</span>
+        <h2>📡 Communication Analysis</h2>
+        <p>Analyze satellite communication parameters.</p>
+    </div>
 
-        <div class="feature-grid">
+    <div class="feature-card">
 
-            <div class="feature-card">
-                <div class="feature-icon">📶</div>
-                <h3>Signal Strength</h3>
-                <p>Signal strength represents the received signal power.</p>
-            </div>
+        <h3>Select Satellite</h3>
 
-            <div class="feature-card">
-                <div class="feature-icon">⏱️</div>
-                <h3>Signal Delay</h3>
-                <p>Time taken by a signal to travel between two points.</p>
-            </div>
+        <select id="communicationSatellite">
+            <option value="25544">ISS (25544)</option>
+        </select>
 
-            <div class="feature-card">
-                <div class="feature-icon">🌐</div>
-                <h3>Communication Link</h3>
-                <p>Communication between satellites and ground stations.</p>
-            </div>
+        <button id="analyzeCommunicationButton" type="button">
+            Analyze Communication
+        </button>
 
-        </div>
+        <p id="communicationMessage" class="message">
+            Select a satellite to begin analysis.
+        </p>
 
-    </section>
+    </div>
 
+    <div id="communicationResults"></div>
+
+</section>
 
     <!-- SPACE ALERTS -->
 
@@ -1645,7 +1652,6 @@
 
 
     <!-- SPACE ALERT JAVASCRIPT -->
-
     <script>
 
         document.addEventListener("DOMContentLoaded", function () {
@@ -2057,6 +2063,72 @@
         });
 
     </script>
+<script>
+const predictButton = document.getElementById("predictPassesButton");
+const predictionMessage = document.getElementById("predictionMessage");
+const predictionResults = document.getElementById("predictionResults");
+
+predictButton.addEventListener("click", async () => {
+
+    predictButton.disabled = true;
+    predictButton.textContent = "Loading predictions...";
+    predictionMessage.textContent = "Fetching satellite pass predictions...";
+    predictionResults.replaceChildren();
+
+    try {
+        const response = await fetch("/api/passes");
+        const data = await response.json();
+
+        if (!response.ok) {
+            throw new Error(data.message || "Unable to retrieve predictions.");
+        }
+
+        if (!data.passes || data.passes.length === 0) {
+            predictionMessage.textContent = "No satellite passes found.";
+            return;
+        }
+
+        predictionMessage.textContent =
+            `${data.passes.length} satellite passes found over ${data.ground_station}.`;
+
+        data.passes.forEach(pass => {
+
+            const card = document.createElement("div");
+            card.className = "feature-card";
+
+            const title = document.createElement("h3");
+            title.textContent = `🛰️ ${pass.satellite}`;
+
+            const details = [
+                `NORAD ID: ${pass.norad_id}`,
+                `Rise: ${pass.rise_time}`,
+                `Maximum elevation time: ${pass.maximum_elevation_time}`,
+                `Set: ${pass.set_time}`,
+                `Maximum elevation: ${pass.maximum_elevation}°`,
+                `Azimuth: ${pass.azimuth}°`,
+                `Range: ${pass.range_km} km`,
+                `Duration: ${pass.duration_minutes} minutes`
+            ];
+
+            card.appendChild(title);
+
+            details.forEach(detail => {
+                const paragraph = document.createElement("p");
+                paragraph.textContent = detail;
+                card.appendChild(paragraph);
+            });
+
+            predictionResults.appendChild(card);
+        });
+
+    } catch (error) {
+        predictionMessage.textContent = "Error: " + error.message;
+    } finally {
+        predictButton.disabled = false;
+        predictButton.textContent = "🔭 Predict Satellite Passes";
+    }
+});
+</script>
 
 </body>
 </html>

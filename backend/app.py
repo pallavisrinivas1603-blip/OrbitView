@@ -1,4 +1,3 @@
-
 from flask import Flask, render_template, jsonify, request
 import os
 import requests
@@ -10,8 +9,11 @@ import sqlite3
 from datetime import datetime, timezone, timedelta
 from skyfield.api import EarthSatellite, load, wgs84
 
-from space_alerts import check_space_proximity, send_telegram_alert
-
+from space_alerts import (
+    check_space_proximity,
+    send_telegram_alert,
+    send_bug_report_telegram
+)
 
 # ==================================================
 # FLASK CONFIGURATION
@@ -29,7 +31,6 @@ app = Flask(
     static_folder=frontend_path,
     static_url_path="/static"
 )
-
 
 # ==================================================
 # BUG & ERROR CENTER DATABASE
@@ -52,6 +53,7 @@ def current_timestamp():
 
 
 def initialize_database():
+
     connection = get_db_connection()
     cursor = connection.cursor()
 
@@ -77,6 +79,51 @@ def initialize_database():
         )
     """)
 
+    cursor.execute("PRAGMA table_info(error_logs)")
+    existing_columns = {
+        row[1] for row in cursor.fetchall()
+    }
+
+    if "source" not in existing_columns:
+        cursor.execute(
+            "ALTER TABLE error_logs ADD COLUMN source TEXT"
+        )
+
+    if "endpoint" not in existing_columns:
+        cursor.execute(
+            "ALTER TABLE error_logs ADD COLUMN endpoint TEXT"
+        )
+
+    cursor.execute("PRAGMA table_info(bug_reports)")
+    bug_columns = {
+        row[1] for row in cursor.fetchall()
+    }
+
+    if "title" not in bug_columns:
+        cursor.execute(
+            "ALTER TABLE bug_reports ADD COLUMN title TEXT"
+        )
+
+    if "description" not in bug_columns:
+        cursor.execute(
+            "ALTER TABLE bug_reports ADD COLUMN description TEXT"
+        )
+
+    if "feature" not in bug_columns:
+        cursor.execute(
+            "ALTER TABLE bug_reports ADD COLUMN feature TEXT"
+        )
+
+    if "status" not in bug_columns:
+        cursor.execute(
+            "ALTER TABLE bug_reports ADD COLUMN status TEXT DEFAULT 'Open'"
+        )
+
+    if "created_at" not in bug_columns:
+        cursor.execute(
+            "ALTER TABLE bug_reports ADD COLUMN created_at TEXT"
+        )
+
     connection.commit()
     connection.close()
 
@@ -87,7 +134,9 @@ def save_error_log(
     source="Backend",
     endpoint=None
 ):
+
     try:
+
         connection = get_db_connection()
 
         connection.execute(
@@ -114,11 +163,12 @@ def save_error_log(
         connection.close()
 
     except Exception:
-        app.logger.exception("Unable to save error log.")
+        app.logger.exception(
+            "Unable to save error log."
+        )
 
 
 initialize_database()
-
 
 # ==================================================
 # SATELLITE CONFIGURATION
@@ -136,7 +186,17 @@ ORBIT_COLORS = {
     "20580": "#FFCB70"
 }
 
-CELESTRAK_URL = "https://celestrak.org/NORAD/elements/gp.php"
+CELESTRAK_URL = (
+    "https://celestrak.org/NORAD/elements/gp.php"
+)
+
+ALTERNATE_TLE_URL = (
+    "https://tle.ivanstanojevic.me/api/tle/{}"
+)
+
+TLE_HEADERS = {
+    "User-Agent": "OrbitView/1.0"
+}
 
 ts = load.timescale()
 
@@ -150,12 +210,13 @@ GROUND_STATION_NAME = "Bengaluru, India"
 
 MINIMUM_ELEVATION = 10
 
-IST = timezone(timedelta(hours=5, minutes=30))
+IST = timezone(
+    timedelta(hours=5, minutes=30)
+)
 
 SPEED_OF_LIGHT_KM_S = 299792.458
 
 COMMUNICATION_FREQUENCY_GHZ = 2.0
-
 
 # ==================================================
 # SPACE ALERT CONFIGURATION
@@ -165,61 +226,227 @@ SPACE_ALERT_COOLDOWN = 300
 
 LAST_SPACE_ALERT = {}
 
-
 # ==================================================
 # TLE CACHE
 # ==================================================
 
 TLE_CACHE = {
     "fetched_at": 0,
-    "records": None
+    "records": {}
 }
 
 CACHE_DURATION = 7200
 
+# ==================================================
+# TLE VALIDATION
+# ==================================================
+
+def validate_tle(line1, line2, satellite_id):
+
+    if not line1.startswith("1 "):
+        return False
+
+    if not line2.startswith("2 "):
+        return False
+
+    line1_id = line1[2:7].strip()
+    line2_id = line2[2:7].strip()
+
+    return (
+        line1_id == satellite_id
+        and line2_id == satellite_id
+    )
+
+
+# ==================================================
+# SATELLITE DATA RETRIEVAL
+# ==================================================
 
 def get_satellite_records():
 
     current_time = time.time()
 
-    if (
-        TLE_CACHE["records"] is not None
-        and current_time - TLE_CACHE["fetched_at"] < CACHE_DURATION
+    cached_records = TLE_CACHE["records"]
+
+    # Return cache only when every configured satellite
+    # has a recent, successfully retrieved record.
+
+    if cached_records and all(
+        satellite_id in cached_records
+        and not cached_records[satellite_id].get("stale", False)
+        and current_time - cached_records[satellite_id].get(
+            "fetched_at",
+            TLE_CACHE["fetched_at"]
+        ) < CACHE_DURATION
+        for satellite_id in SATELLITES
     ):
-        return TLE_CACHE["records"]
+
+        return cached_records
+
+    # Preserve previous records so a failed provider
+    # does not immediately remove a satellite.
 
     records = {}
+    provider_errors = []
 
     for satellite_id, satellite_name in SATELLITES.items():
 
-        response = requests.get(
-            CELESTRAK_URL,
-            params={
-                "CATNR": satellite_id,
-                "FORMAT": "TLE"
-            },
-            timeout=20
-        )
+        satellite_record = None
 
-        response.raise_for_status()
+        # ------------------------------------------
+        # PROVIDER 1: CELESTRAK
+        # ------------------------------------------
 
-        lines = [
-            line.strip()
-            for line in response.text.splitlines()
-            if line.strip()
-        ]
+        try:
 
-        if len(lines) < 3:
-            continue
+            response = requests.get(
+                CELESTRAK_URL,
+                params={
+                    "CATNR": satellite_id,
+                    "FORMAT": "TLE"
+                },
+                headers=TLE_HEADERS,
+                timeout=15
+            )
 
-        records[satellite_id] = {
-            "name": satellite_name,
-            "line1": lines[1],
-            "line2": lines[2]
-        }
+            response.raise_for_status()
+
+            lines = [
+                line.strip()
+                for line in response.text.splitlines()
+                if line.strip()
+            ]
+
+            line1 = next(
+                (
+                    line for line in lines
+                    if line.startswith("1 ")
+                ),
+                None
+            )
+
+            line2 = next(
+                (
+                    line for line in lines
+                    if line.startswith("2 ")
+                ),
+                None
+            )
+
+            if (
+                line1
+                and line2
+                and validate_tle(
+                    line1,
+                    line2,
+                    satellite_id
+                )
+            ):
+
+                satellite_record = {
+                    "name": satellite_name,
+                    "line1": line1,
+                    "line2": line2,
+                    "source": "CelesTrak",
+                    "fetched_at": current_time,
+                    "stale": False
+                }
+
+        except Exception as error:
+
+            provider_errors.append(
+                f"CelesTrak {satellite_id}: {error}"
+            )
+
+        # ------------------------------------------
+        # PROVIDER 2: ALTERNATE TLE API
+        # ------------------------------------------
+
+        if satellite_record is None:
+
+            try:
+
+                response = requests.get(
+                    ALTERNATE_TLE_URL.format(
+                        satellite_id
+                    ),
+                    headers=TLE_HEADERS,
+                    timeout=15
+                )
+
+                response.raise_for_status()
+
+                data = response.json()
+
+                line1 = str(
+                    data.get("line1", "")
+                ).strip()
+
+                line2 = str(
+                    data.get("line2", "")
+                ).strip()
+
+                if validate_tle(
+                    line1,
+                    line2,
+                    satellite_id
+                ):
+
+                    satellite_record = {
+                        "name": satellite_name,
+                        "line1": line1,
+                        "line2": line2,
+                        "source": "Alternate TLE API",
+                        "fetched_at": current_time,
+                        "stale": False
+                    }
+
+            except Exception as error:
+
+                provider_errors.append(
+                    f"Alternate API {satellite_id}: {error}"
+                )
+
+        # ------------------------------------------
+        # KEEP SUCCESSFUL RECORDS
+        # ------------------------------------------
+
+        if satellite_record is not None:
+
+            records[satellite_id] = satellite_record
+
+        # ------------------------------------------
+        # PRESERVE PREVIOUS RECORD IF BOTH FAIL
+        # ------------------------------------------
+
+        elif satellite_id in cached_records:
+
+            old_record = dict(
+                cached_records[satellite_id]
+            )
+
+            old_record["stale"] = True
+
+            records[satellite_id] = old_record
+
+            app.logger.warning(
+                "Using stale cached TLE for %s",
+                satellite_name
+            )
+
+    # ------------------------------------------
+    # CHECK WHETHER ANY DATA EXISTS
+    # ------------------------------------------
 
     if not records:
-        raise Exception("No satellite orbital data received.")
+
+        raise Exception(
+            "Unable to retrieve satellite orbital data. "
+            + " | ".join(provider_errors)
+        )
+
+    # Update cache without discarding older records
+    # for satellites whose providers failed.
 
     TLE_CACHE["records"] = records
     TLE_CACHE["fetched_at"] = current_time
@@ -258,9 +485,7 @@ def to_ist(skyfield_time):
     utc_time = skyfield_time.utc_datetime()
 
     return utc_time.astimezone(IST)
-
-
-# ==================================================
+    # ==================================================
 # HOME PAGE
 # ==================================================
 
@@ -270,7 +495,7 @@ def home():
 
 
 # ==================================================
-# BUG & ERROR CENTER - SYSTEM HEALTH
+# SYSTEM HEALTH
 # ==================================================
 
 @app.route("/api/system-health")
@@ -314,7 +539,7 @@ def system_health():
 
 
 # ==================================================
-# BUG & ERROR CENTER - FRONTEND ERROR REPORTING
+# FRONTEND ERROR REPORTING
 # ==================================================
 
 @app.route("/api/errors", methods=["POST"])
@@ -358,13 +583,14 @@ def receive_frontend_error():
 
 
 # ==================================================
-# BUG & ERROR CENTER - ERROR LOGS
+# ERROR LOGS
 # ==================================================
 
 @app.route("/api/error-logs")
 def get_error_logs():
 
     try:
+
         connection = get_db_connection()
 
         rows = connection.execute(
@@ -388,7 +614,9 @@ def get_error_logs():
 
     except Exception:
 
-        app.logger.exception("Unable to retrieve error logs.")
+        app.logger.exception(
+            "Unable to retrieve error logs."
+        )
 
         return jsonify({
             "success": False,
@@ -397,7 +625,7 @@ def get_error_logs():
 
 
 # ==================================================
-# BUG & ERROR CENTER - SUBMIT BUG REPORT
+# SUBMIT BUG REPORT
 # ==================================================
 
 @app.route("/api/bug-reports", methods=["POST"])
@@ -410,30 +638,38 @@ def submit_bug_report():
     feature = str(data.get("feature", "")).strip()
 
     if not title or not description or not feature:
+
         return jsonify({
             "success": False,
             "message": "Title, description and feature are required."
         }), 400
 
     if len(title) > 150:
+
         return jsonify({
             "success": False,
             "message": "Title must be 150 characters or fewer."
         }), 400
 
     if len(description) > 3000:
+
         return jsonify({
             "success": False,
             "message": "Description must be 3000 characters or fewer."
         }), 400
 
     if len(feature) > 100:
+
         return jsonify({
             "success": False,
             "message": "Feature name is too long."
         }), 400
 
+    connection = None
+
     try:
+
+        created_at = current_timestamp()
 
         connection = get_db_connection()
 
@@ -453,7 +689,7 @@ def submit_bug_report():
                 description,
                 feature,
                 "Open",
-                current_timestamp()
+                created_at
             )
         )
 
@@ -461,16 +697,38 @@ def submit_bug_report():
 
         connection.commit()
         connection.close()
+        connection = None
+
+        report = {
+            "title": title,
+            "description": description,
+            "feature": feature,
+            "status": "Open",
+            "created_at": created_at
+        }
+
+        telegram_sent = send_bug_report_telegram(report)
+
+        print(
+            "DEBUG TELEGRAM RESULT:",
+            telegram_sent
+        )
 
         return jsonify({
             "success": True,
             "message": "Bug report submitted successfully.",
-            "report_id": report_id
+            "report_id": report_id,
+            "telegram_sent": telegram_sent
         }), 201
 
     except Exception:
 
-        app.logger.exception("Unable to save bug report.")
+        if connection:
+            connection.close()
+
+        app.logger.exception(
+            "Unable to save bug report."
+        )
 
         return jsonify({
             "success": False,
@@ -479,47 +737,7 @@ def submit_bug_report():
 
 
 # ==================================================
-# BUG & ERROR CENTER - VIEW BUG REPORTS
-# ==================================================
-
-@app.route("/api/bug-reports")
-def get_bug_reports():
-
-    try:
-
-        connection = get_db_connection()
-
-        rows = connection.execute(
-            """
-            SELECT *
-            FROM bug_reports
-            ORDER BY id DESC
-            LIMIT 200
-            """
-        ).fetchall()
-
-        connection.close()
-
-        reports = [dict(row) for row in rows]
-
-        return jsonify({
-            "success": True,
-            "count": len(reports),
-            "reports": reports
-        })
-
-    except Exception:
-
-        app.logger.exception("Unable to retrieve bug reports.")
-
-        return jsonify({
-            "success": False,
-            "message": "Unable to retrieve bug reports."
-        }), 500
-
-
-# ==================================================
-# BUG & ERROR CENTER - UPDATE REPORT STATUS
+# UPDATE BUG REPORT STATUS
 # ==================================================
 
 @app.route(
@@ -530,7 +748,9 @@ def update_bug_report_status(report_id):
 
     data = request.get_json(silent=True) or {}
 
-    new_status = str(data.get("status", "")).strip()
+    new_status = str(
+        data.get("status", "")
+    ).strip()
 
     allowed_statuses = [
         "Open",
@@ -539,6 +759,7 @@ def update_bug_report_status(report_id):
     ]
 
     if new_status not in allowed_statuses:
+
         return jsonify({
             "success": False,
             "message": "Invalid report status."
@@ -564,6 +785,7 @@ def update_bug_report_status(report_id):
         connection.close()
 
         if not updated:
+
             return jsonify({
                 "success": False,
                 "message": "Bug report not found."
@@ -578,7 +800,9 @@ def update_bug_report_status(report_id):
 
     except Exception:
 
-        app.logger.exception("Unable to update bug report.")
+        app.logger.exception(
+            "Unable to update bug report."
+        )
 
         return jsonify({
             "success": False,
@@ -597,7 +821,9 @@ def log_server_errors(response):
 
         try:
 
-            response_data = response.get_json(silent=True) or {}
+            response_data = (
+                response.get_json(silent=True) or {}
+            )
 
             message = (
                 response_data.get("error")
@@ -608,7 +834,9 @@ def log_server_errors(response):
             details = response_data.get("details")
 
             if details:
-                message = f"{message}: {str(details)[:1500]}"
+                message = (
+                    f"{message}: {str(details)[:1500]}"
+                )
 
             save_error_log(
                 error_type=f"HTTP {response.status_code}",
@@ -618,7 +846,10 @@ def log_server_errors(response):
             )
 
         except Exception:
-            app.logger.exception("Automatic error logging failed.")
+
+            app.logger.exception(
+                "Automatic error logging failed."
+            )
 
     return response
 
@@ -631,6 +862,8 @@ def log_server_errors(response):
 def get_satellites():
 
     try:
+
+        records = get_satellite_records()
 
         satellite_objects = create_satellites()
 
@@ -647,6 +880,8 @@ def get_satellites():
             velocity = geocentric.velocity.km_per_s
 
             speed = (velocity ** 2).sum() ** 0.5
+
+            record = records[satellite_id]
 
             satellites.append({
 
@@ -670,15 +905,21 @@ def get_satellites():
 
                 "norad_id": satellite_id,
 
-                "data_source": "CelesTrak",
+                "data_source": record["source"],
 
-                "status": "REAL ORBITAL DATA"
+                "data_status": (
+                    "STALE CACHED DATA"
+                    if record.get("stale", False)
+                    else "CURRENT TLE DATA"
+                ),
+
+                "status": "ORBITAL DATA"
 
             })
 
         return jsonify({
 
-            "source": "CelesTrak",
+            "source": "Public TLE providers",
 
             "updated_at": datetime.now(
                 timezone.utc
@@ -688,27 +929,19 @@ def get_satellites():
 
         })
 
-    except requests.RequestException as error:
+    except Exception as error:
+
+        app.logger.exception(
+            "Satellite tracking failed."
+        )
 
         return jsonify({
 
-            "error": "Unable to connect to CelesTrak.",
+            "error": "Unable to retrieve satellite orbital data.",
 
             "details": str(error)
 
         }), 502
-
-    except Exception as error:
-
-        print(traceback.format_exc())
-
-        return jsonify({
-
-            "error": "Satellite calculation failed.",
-
-            "details": str(error)
-
-        }), 500
 
 
 # ==================================================
@@ -742,25 +975,35 @@ def get_satellite_orbits():
                 continue
 
             period_minutes = 1440 / mean_motion
+
             period_seconds = period_minutes * 60
 
             sample_times = [
 
                 current_datetime + timedelta(
-                    seconds=period_seconds * index / (SAMPLE_COUNT - 1)
+                    seconds=period_seconds * index / (
+                        SAMPLE_COUNT - 1
+                    )
                 )
 
                 for index in range(SAMPLE_COUNT)
 
             ]
 
-            skyfield_times = ts.from_datetimes(sample_times)
+            skyfield_times = ts.from_datetimes(
+                sample_times
+            )
 
-            geocentric = satellite.at(skyfield_times)
+            geocentric = satellite.at(
+                skyfield_times
+            )
 
-            subpoints = wgs84.subpoint(geocentric)
+            subpoints = wgs84.subpoint(
+                geocentric
+            )
 
             latitudes = subpoints.latitude.degrees
+
             longitudes = subpoints.longitude.degrees
 
             coordinates = [
@@ -792,13 +1035,19 @@ def get_satellite_orbits():
                     period_minutes, 2
                 ),
 
-                "coordinates": coordinates
+                "coordinates": coordinates,
+
+                "data_status": (
+                    "STALE CACHED DATA"
+                    if record.get("stale", False)
+                    else "CURRENT TLE DATA"
+                )
 
             })
 
         return jsonify({
 
-            "source": "CelesTrak TLE + Skyfield",
+            "source": "Public TLE providers + Skyfield",
 
             "calculation_type": "Predicted orbital path",
 
@@ -810,32 +1059,20 @@ def get_satellite_orbits():
 
         })
 
-    except requests.RequestException as error:
+    except Exception as error:
 
-        print(traceback.format_exc())
+        app.logger.exception(
+            "Orbit calculation failed."
+        )
 
         return jsonify({
 
-            "error": "Unable to retrieve orbital data.",
+            "error": "Unable to calculate satellite orbits.",
 
             "details": str(error)
 
         }), 502
-
-    except Exception as error:
-
-        print(traceback.format_exc())
-
-        return jsonify({
-
-            "error": "Orbit calculation failed.",
-
-            "details": str(error)
-
-        }), 500
-
-
-# ==================================================
+        # ==================================================
 # SATELLITE PASS PREDICTION API
 # ==================================================
 
@@ -847,7 +1084,6 @@ def get_satellite_passes():
         satellite_objects = create_satellites()
 
         start_time = ts.now()
-
         end_time = ts.tt_jd(start_time.tt + 1)
 
         passes = []
@@ -868,26 +1104,17 @@ def get_satellite_passes():
                 if event_code == 0:
 
                     current_pass = {
-
                         "satellite": SATELLITES[satellite_id],
-
                         "norad_id": satellite_id,
-
-                        "rise_time": to_ist(
-                            event_time
-                        ).isoformat()
-
+                        "rise_time": to_ist(event_time).isoformat()
                     }
 
                 elif event_code == 1 and current_pass:
 
                     difference = satellite - GROUND_STATION
-
                     topocentric = difference.at(event_time)
 
-                    altitude, azimuth, distance = (
-                        topocentric.altaz()
-                    )
+                    altitude, azimuth, distance = topocentric.altaz()
 
                     current_pass["maximum_elevation"] = round(
                         altitude.degrees, 2
@@ -909,9 +1136,7 @@ def get_satellite_passes():
 
                     set_time = to_ist(event_time)
 
-                    current_pass["set_time"] = (
-                        set_time.isoformat()
-                    )
+                    current_pass["set_time"] = set_time.isoformat()
 
                     rise_time = datetime.fromisoformat(
                         current_pass["rise_time"]
@@ -937,15 +1162,10 @@ def get_satellite_passes():
         return jsonify({
 
             "ground_station": GROUND_STATION_NAME,
-
             "prediction_period": "Next 24 hours",
-
             "minimum_elevation_degrees": MINIMUM_ELEVATION,
-
             "timezone": "IST",
-
-            "data_source": "CelesTrak orbital elements",
-
+            "data_source": "Public TLE orbital elements",
             "passes": passes,
 
             "message": (
@@ -956,27 +1176,16 @@ def get_satellite_passes():
 
         })
 
-    except requests.RequestException as error:
-
-        print(traceback.format_exc())
-
-        return jsonify({
-
-            "error": "Unable to retrieve satellite data.",
-
-            "details": str(error)
-
-        }), 502
-
     except Exception as error:
 
-        print(traceback.format_exc())
+        app.logger.exception(
+            "Satellite pass prediction failed."
+        )
 
         return jsonify({
 
             "error": "Satellite pass prediction failed.",
-
-            "details": traceback.format_exc()
+            "details": str(error)
 
         }), 500
 
@@ -1003,14 +1212,14 @@ def communication_analysis(satellite_id):
         current_time = ts.now()
 
         difference = satellite - GROUND_STATION
-
         topocentric = difference.at(current_time)
 
-        altitude, azimuth, distance = (
-            topocentric.altaz()
-        )
+        altitude, azimuth, distance = topocentric.altaz()
 
         distance_km = float(distance.km)
+
+        if distance_km <= 0:
+            raise ValueError("Invalid satellite distance.")
 
         one_way_delay_ms = (
             distance_km / SPEED_OF_LIGHT_KM_S
@@ -1020,9 +1229,6 @@ def communication_analysis(satellite_id):
 
         frequency_ghz = COMMUNICATION_FREQUENCY_GHZ
         frequency_mhz = frequency_ghz * 1000
-
-        if distance_km <= 0:
-            raise ValueError("Invalid satellite distance.")
 
         fspl_db = (
             32.44
@@ -1047,12 +1253,14 @@ def communication_analysis(satellite_id):
             altitude.degrees >= MINIMUM_ELEVATION
         )
 
+        record = TLE_CACHE["records"].get(
+            satellite_id, {}
+        )
+
         return jsonify({
 
             "satellite": SATELLITES[satellite_id],
-
             "norad_id": satellite_id,
-
             "ground_station": GROUND_STATION_NAME,
 
             "calculation_time": to_ist(
@@ -1105,32 +1313,29 @@ def communication_analysis(satellite_id):
 
             "calculation_type": "Educational simulation",
 
-            "data_source": "CelesTrak orbital elements",
+            "data_source": record.get(
+                "source", "Cached TLE data"
+            ),
+
+            "data_status": (
+                "STALE CACHED DATA"
+                if record.get("stale", False)
+                else "CURRENT TLE DATA"
+            ),
 
             "status": "SIMULATED COMMUNICATION ANALYSIS"
 
         })
 
-    except requests.RequestException as error:
-
-        print(traceback.format_exc())
-
-        return jsonify({
-
-            "error": "Unable to retrieve satellite data.",
-
-            "details": str(error)
-
-        }), 502
-
     except Exception as error:
 
-        print(traceback.format_exc())
+        app.logger.exception(
+            "Communication analysis failed."
+        )
 
         return jsonify({
 
             "error": "Communication analysis failed.",
-
             "details": str(error)
 
         }), 500
@@ -1147,7 +1352,9 @@ def get_space_alerts():
 
         satellite_names = list(SATELLITES.values())
 
-        alerts = check_space_proximity(satellite_names)
+        alerts = check_space_proximity(
+            satellite_names
+        )
 
         results = []
 
@@ -1161,9 +1368,14 @@ def get_space_alerts():
                 satellite_name, 0
             )
 
-            if current_time - last_sent >= SPACE_ALERT_COOLDOWN:
+            if (
+                current_time - last_sent
+                >= SPACE_ALERT_COOLDOWN
+            ):
 
-                telegram_sent = send_telegram_alert(alert)
+                telegram_sent = send_telegram_alert(
+                    alert
+                )
 
                 if telegram_sent:
                     LAST_SPACE_ALERT[satellite_name] = current_time
@@ -1199,12 +1411,13 @@ def get_space_alerts():
 
     except Exception as error:
 
-        print(traceback.format_exc())
+        app.logger.exception(
+            "Space proximity alert failed."
+        )
 
         return jsonify({
 
             "error": "Space proximity alert failed.",
-
             "details": str(error)
 
         }), 500
@@ -1215,4 +1428,7 @@ def get_space_alerts():
 # ==================================================
 
 if __name__ == "__main__":
+
+    initialize_database()
+
     app.run(debug=True)
